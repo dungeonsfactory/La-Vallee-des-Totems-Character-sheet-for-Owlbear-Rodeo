@@ -74,7 +74,7 @@
       font-size: 14px;
     }
 
-    /* Section Profil (Âge, Taille, Poids) */
+    /* Section Profil (Âge, Taille, Poids, Encombrement) */
     .profil-box {
       display: flex;
       justify-content: space-around;
@@ -83,10 +83,11 @@
       border-radius: 6px;
       margin-bottom: 15px;
       border: 1px solid #333;
-      font-size: 13px;
+      font-size: 12px;
+      gap: 5px;
     }
-    .profil-item { text-align: center; }
-    .profil-item span { display: block; color: #ffaa00; font-weight: bold; font-size: 15px; margin-top: 2px; }
+    .profil-item { text-align: center; flex: 1; }
+    .profil-item span { display: block; color: #ffaa00; font-weight: bold; font-size: 14px; margin-top: 2px; }
 
     .grid {
       display: grid;
@@ -179,6 +180,7 @@
     <div class="profil-item">Âge<span id="p-age">-</span></div>
     <div class="profil-item">Taille<span id="p-taille">-</span></div>
     <div class="profil-item">Poids<span id="p-poids">-</span></div>
+    <div class="profil-item">Encombrement<span id="p-enc">-</span></div>
   </div>
 
   <div class="grid" id="statsContainer"></div>
@@ -300,9 +302,13 @@
       document.getElementById("charBanner").src = template.image;
       document.getElementById("characterClass").innerText = template.class;
 
+      // Calcul de la valeur entière de l'encombrement
+      const encombrementUnites = Math.floor((dynamic.poids + dynamic.taille) / 20);
+
       document.getElementById("p-age").innerText = `${dynamic.age} ans`;
       document.getElementById("p-taille").innerText = `${dynamic.taille} cm`;
       document.getElementById("p-poids").innerText = `${dynamic.poids} kg`;
+      document.getElementById("p-enc").innerText = `${encombrementUnites} Uté${encombrementUnites > 1 ? 's' : ''}`;
 
       const container = document.getElementById("statsContainer");
       container.innerHTML = ""; 
@@ -337,7 +343,7 @@
       const fireAspectVal = aspectTable[fireDiceStr]; 
       function movimientoCalcul() { return Math.floor(fireDiceNum / 2); }
 
-      // Ligne Initiative renommée
+      // Ligne Initiative
       const initLabel = document.createElement("label");
       initLabel.innerText = "Initiative";
       const initBonusEl = document.createElement("div");
