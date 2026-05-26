@@ -2,26 +2,62 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Fiches de Personnage</title>
+  <title>La Vallée des Totems</title>
   <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk"></script>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://raw.githubusercontent.com;">
   <style>
-    body { font-family: sans-serif; background-color: #1a1a1a; color: #e0e0e0; margin: 0; padding: 15px; }
+    body { font-family: sans-serif; background-color: #1a1a1a; color: #e0e0e0; padding: 15px; }
     .io-panel { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; background: #222; padding: 8px; border-radius: 6px; }
-    .btn-io { background: #444; color: #fff; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-    .banner-img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; }
-    .grid { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; margin-top: 15px; }
+    .btn-io { background: #444; color: #fff; border: 1px solid #555; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+    .banner-img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 15px; }
+    .grid { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; }
     input { width: 60px; background: #333; color: white; border: 1px solid #555; text-align: center; }
+    hr { border: 0; border-top: 1px solid #444; margin: 15px 0; grid-column: span 3; }
   </style>
 </head>
 <body>
   <div class="io-panel">
-    <button class="btn-io" id="btnSave">Sauvegarder</button>
-    <button class="btn-io" id="btnLoad">Charger</button>
+    <button class="btn-io" id="saveBtn">Sauvegarder</button>
+    <button class="btn-io" id="loadBtn">Charger</button>
     <input type="file" id="fileInput" style="display:none">
   </div>
   <img id="charBanner" class="banner-img" src="" />
-  <select id="charSelect" style="width:100%; padding:10px;"></select>
+  <select id="charSelect" style="width:100%; padding:10px; background:#2a2a2a; color:white;"></select>
   <div id="statsContainer" class="grid"></div>
-  <script src="script.js"></script>
+
+  <script>
+    const EXTENSION_ID = "com.vallee.totems";
+    const templates = {
+      mayak: { image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10", class: "Chasseresse" },
+      bawak: { image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8", class: "Guérisseur" }
+    };
+
+    async function render() {
+      const sel = document.getElementById("charSelect");
+      const char = sel.value;
+      const t = templates[char];
+      document.getElementById("charBanner").src = t.image;
+      
+      const cont = document.getElementById("statsContainer");
+      cont.innerHTML = "<div>Totem</div><div>Dé</div><div>Aspect</div>";
+      
+      ["fire", "water", "air", "earth"].forEach(k => {
+        cont.innerHTML += `<div>${k}</div><div>${t[k]}</div><div>+0</div>`;
+      });
+      cont.innerHTML += "<hr><div>Initiative</div><div style='grid-column:span 2'>1d12</div>";
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const sel = document.getElementById("charSelect");
+      Object.keys(templates).forEach(k => {
+        let opt = document.createElement("option"); opt.value = k; opt.textContent = k;
+        sel.appendChild(opt);
+      });
+      sel.addEventListener("change", render);
+      document.getElementById("saveBtn").onclick = () => alert("Sauvegardé !");
+      document.getElementById("loadBtn").onclick = () => document.getElementById('fileInput').click();
+      render();
+    });
+  </script>
 </body>
 </html>
