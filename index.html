@@ -138,17 +138,6 @@
     .color-earth { color: #f39c12 !important; }
     .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
 
-    .init-tour-box {
-      background: #333;
-      color: #ffaa00;
-      font-weight: bold;
-      padding: 4px 8px;
-      border-radius: 4px;
-      text-align: center;
-      border: 1px dashed #ffaa00;
-      min-width: 35px;
-    }
-
     input[type="number"] {
       width: 60px;
       padding: 5px;
@@ -212,10 +201,10 @@
     };
 
     const defaultDynamicStats = {
-      mayak: { res: 22, choc: 16, lien: 14, essence: 18, initTour: "-", age: 0, taille: 0, poids: 0 },
-      bawak: { res: 18, choc: 20, lien: 21, essence: 18, initTour: "-", age: 0, taille: 0, poids: 0 },
-      cylak: { res: 15, choc: 18, lien: 18, essence: 24, initTour: "-", age: 0, taille: 0, poids: 0 },
-      borak: { res: 24, choc: 20, lien: 15, essence: 14, initTour: "-", age: 0, taille: 0, poids: 0 }
+      mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0 },
+      bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0 },
+      cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0 },
+      borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0 }
     };
 
     const totemsConfig = {
@@ -348,9 +337,9 @@
       const fireAspectVal = aspectTable[fireDiceStr]; 
       function movimientoCalcul() { return Math.floor(fireDiceNum / 2); }
 
-      // Ligne Initiative de base
+      // Ligne Initiative renommée
       const initLabel = document.createElement("label");
-      initLabel.innerText = "Initiative (Base)";
+      initLabel.innerText = "Initiative";
       const initBonusEl = document.createElement("div");
       initBonusEl.style.gridColumn = "span 2";
       initBonusEl.style.textAlign = "right";
@@ -359,18 +348,6 @@
       initBonusEl.innerText = `1d12 + (${fireAspectVal >= 0 ? '+' : ''}${fireAspectVal})`;
       container.appendChild(initLabel);
       container.appendChild(initBonusEl);
-
-      // Ligne Initiative pour le tour (Épurée sans le bouton)
-      const initTourLabel = document.createElement("label");
-      initTourLabel.innerText = "Initiative du Tour";
-      
-      const initTourVal = document.createElement("div");
-      initTourVal.className = "init-tour-box";
-      initTourVal.style.gridColumn = "span 2"; // Prend toute la largeur restante
-      initTourVal.innerText = dynamic.initTour;
-
-      container.appendChild(initTourLabel);
-      container.appendChild(initTourVal);
 
       // Ligne Mouvement
       const movLabel = document.createElement("label");
@@ -453,4 +430,3 @@
   </script>
 </body>
 </html>
-
