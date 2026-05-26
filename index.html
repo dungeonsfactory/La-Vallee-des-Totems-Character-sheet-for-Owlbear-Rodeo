@@ -2,62 +2,102 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>La Vallée des Totems</title>
+  <title>Fiches de Personnage - La Vallée des Totems</title>
   <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk"></script>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://raw.githubusercontent.com;">
   <style>
-    body { font-family: sans-serif; background-color: #1a1a1a; color: #e0e0e0; padding: 15px; }
-    .io-panel { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; background: #222; padding: 8px; border-radius: 6px; }
-    .btn-io { background: #444; color: #fff; border: 1px solid #555; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-    .banner-img { width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 15px; }
-    .grid { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; }
-    input { width: 60px; background: #333; color: white; border: 1px solid #555; text-align: center; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #1a1a1a; color: #e0e0e0; margin: 0; padding: 15px; }
+    h2 { margin-top: 0; color: #ffaa00; text-align: center; margin-bottom: 5px; }
+    .io-panel { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; background: #222; padding: 8px; border-radius: 6px; border: 1px solid #333; }
+    .btn-io { background: #444; color: #fff; border: 1px solid #555; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+    #fileInput { display: none; }
+    .banner-container { width: 100%; height: 100px; margin-bottom: 15px; border-radius: 6px; overflow: hidden; background: #2a2a2a; border: 1px solid #333; }
+    .banner-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    select.char-select { width: 100%; padding: 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; margin-bottom: 5px; font-size: 16px; }
+    .classe { text-align: center; font-style: italic; color: #aaa; margin-bottom: 5px; }
+    .profil-box { display: flex; justify-content: space-around; background: #222; padding: 8px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #333; font-size: 12px; }
+    .profil-item { text-align: center; } .profil-item span { display: block; color: #ffaa00; font-weight: bold; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: 1fr auto auto; gap: 12px 15px; align-items: center; }
+    .grid-header { font-size: 11px; text-transform: uppercase; color: #777; font-weight: bold; text-align: center; }
+    .dice-val { font-family: monospace; font-weight: bold; background: #222; padding: 4px 8px; border-radius: 4px; text-align: center; }
+    .aspect-val { font-weight: bold; color: #ffffff; padding: 4px 8px; border-radius: 4px; text-align: center; }
+    .color-fire { color: #ff4d4d; } .bg-fire { background: #8b0000; border: 1px solid #ff4d4d; }
+    .color-water { color: #2ecc71; } .bg-water { background: #1b4d3e; border: 1px solid #2ecc71; }
+    .color-air { color: #3498db; } .bg-air { background: #1a365d; border: 1px solid #3498db; }
+    .color-earth { color: #f39c12; } .bg-earth { background: #7e4a00; border: 1px solid #f39c12; }
+    input[type="number"] { width: 60px; padding: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; text-align: center; }
     hr { border: 0; border-top: 1px solid #444; margin: 15px 0; grid-column: span 3; }
   </style>
 </head>
 <body>
+  <h2>Fiche de Personnage</h2>
   <div class="io-panel">
-    <button class="btn-io" id="saveBtn">Sauvegarder</button>
-    <button class="btn-io" id="loadBtn">Charger</button>
-    <input type="file" id="fileInput" style="display:none">
+    <button class="btn-io" onclick="exportCampaignText()">💾 Sauvegarder</button>
+    <button class="btn-io" onclick="document.getElementById('fileInput').click()">📂 Charger</button>
+    <input type="file" id="fileInput" accept=".json" onchange="importCampaignText(event)">
   </div>
-  <img id="charBanner" class="banner-img" src="" />
-  <select id="charSelect" style="width:100%; padding:10px; background:#2a2a2a; color:white;"></select>
-  <div id="statsContainer" class="grid"></div>
+  <div class="banner-container"><img id="charBanner" src="" class="banner-img" /></div>
+  <select id="charSelect" class="char-select" onchange="changeCharacter()">
+    <option value="mayak">Mayak</option><option value="bawak">Bawak</option><option value="cylak">Cylak</option><option value="borak">Borak</option>
+  </select>
+  <div id="characterClass" class="classe">-</div>
+  <div class="profil-box">
+    <div class="profil-item">Âge<span id="p-age">-</span></div>
+    <div class="profil-item">Taille<span id="p-taille">-</span></div>
+    <div class="profil-item">Poids<span id="p-poids">-</span></div>
+    <div class="profil-item">Encombrement<span id="p-enc">-</span></div>
+  </div>
+  <div class="grid" id="statsContainer"></div>
 
   <script>
-    const EXTENSION_ID = "com.vallee.totems";
-    const templates = {
-      mayak: { image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10", class: "Chasseresse" },
-      bawak: { image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8", class: "Guérisseur" }
+    const EXTENSION_ID = "com.monextension.fiches_simples";
+    const aspectTable = { "D12": 6, "D10": 1, "D8": 0, "D6": -1 };
+    const characterTemplates = {
+      mayak: { class: "Chasseresse", image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10" },
+      bawak: { class: "Guérisseur", image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8" },
+      cylak: { class: "Sorçière", image: "cylak.png", fire: "D10", water: "D8", air: "D12", earth: "D6" },
+      borak: { class: "Protecteur", image: "borak.png", fire: "D10", water: "D8", air: "D6", earth: "D12" }
     };
+    const defaultDynamicStats = {
+      mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0 },
+      bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0 },
+      cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0 },
+      borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0 }
+    };
+    let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
+    let selectedChar = "mayak";
 
-    async function render() {
-      const sel = document.getElementById("charSelect");
-      const char = sel.value;
-      const t = templates[char];
+    OBR.onReady(async () => {
+      const metadata = await OBR.room.getMetadata();
+      if (metadata[EXTENSION_ID]) currentStats = metadata[EXTENSION_ID];
+      renderCharacter();
+    });
+
+    function changeCharacter() { selectedChar = document.getElementById("charSelect").value; renderCharacter(); }
+
+    function renderCharacter() {
+      const t = characterTemplates[selectedChar];
+      const d = currentStats[selectedChar];
       document.getElementById("charBanner").src = t.image;
+      document.getElementById("characterClass").innerText = t.class;
+      document.getElementById("p-age").innerText = d.age + " ans";
+      document.getElementById("p-taille").innerText = d.taille + " cm";
+      document.getElementById("p-poids").innerText = d.poids + " kg";
+      document.getElementById("p-enc").innerText = Math.floor((d.poids + d.taille) / 20) + " Utés";
       
       const cont = document.getElementById("statsContainer");
-      cont.innerHTML = "<div>Totem</div><div>Dé</div><div>Aspect</div>";
-      
+      cont.innerHTML = '<div class="grid-header">Totem</div><div class="grid-header">Dé</div><div class="grid-header">Aspect</div>';
       ["fire", "water", "air", "earth"].forEach(k => {
-        cont.innerHTML += `<div>${k}</div><div>${t[k]}</div><div>+0</div>`;
+        cont.innerHTML += `<label>${k.toUpperCase()}</label><div class="dice-val color-${k}">${t[k]}</div><div class="aspect-val bg-${k}">${aspectTable[t[k]] >= 0 ? '+'+aspectTable[t[k]] : aspectTable[t[k]]}</div>`;
       });
-      cont.innerHTML += "<hr><div>Initiative</div><div style='grid-column:span 2'>1d12</div>";
+      cont.innerHTML += '<hr>';
+      ["res", "choc", "lien", "essence"].forEach(k => {
+        cont.innerHTML += `<label style="grid-column:span 2">${k.toUpperCase()}</label><input type="number" value="${d[k]}" onchange="updateStat('${k}', this.value)">`;
+      });
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const sel = document.getElementById("charSelect");
-      Object.keys(templates).forEach(k => {
-        let opt = document.createElement("option"); opt.value = k; opt.textContent = k;
-        sel.appendChild(opt);
-      });
-      sel.addEventListener("change", render);
-      document.getElementById("saveBtn").onclick = () => alert("Sauvegardé !");
-      document.getElementById("loadBtn").onclick = () => document.getElementById('fileInput').click();
-      render();
-    });
+    async function updateStat(k, v) { currentStats[selectedChar][k] = parseInt(v); await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); }
+    function exportCampaignText() { const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentStats)); const a = document.createElement('a'); a.href = data; a.download = "campagne.json"; a.click(); }
+    function importCampaignText(e) { const reader = new FileReader(); reader.onload = (ev) => { currentStats = JSON.parse(ev.target.result); OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); alert("Chargé !"); }; reader.readAsText(e.target.files[0]); }
   </script>
 </body>
 </html>
