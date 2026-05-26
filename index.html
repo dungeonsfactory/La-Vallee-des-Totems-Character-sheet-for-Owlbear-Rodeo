@@ -409,30 +409,37 @@
       downloadAnchor.remove();
     }
 
-    function importCampaignText(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+  // Remplace ta fonction importCampaignText actuelle par celle-ci :
+function importCampaignText(event) {
+  const file = event.target.files[0];
+  if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        try {
-          const importedStats = JSON.parse(e.target.result);
-          
-          if (importedStats.mayak && importedStats.bawak) {
-            currentStats = importedStats;
-            await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-            renderCharacter();
-            alert("Campagne chargée avec succès !");
-          } else {
-            alert("Fichier non valide pour la Vallée des Totems.");
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const importedStats = JSON.parse(e.target.result);
+      
+      // On vérifie juste que c'est un objet, sans être trop restrictif
+      if (typeof importedStats === 'object' && importedStats !== null) {
+        // On fusionne les données importées avec les nôtres
+        for (let char in importedStats) {
+          if (currentStats[char]) {
+            currentStats[char] = { ...currentStats[char], ...importedStats[char] };
           }
-        } catch (err) {
-          alert("Erreur lors de la lecture du fichier.");
         }
-      };
-      reader.readAsText(file);
-      event.target.value = '';
+        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+        renderCharacter();
+        alert("Campagne chargée avec succès !");
+      } else {
+        alert("Fichier JSON invalide.");
+      }
+    } catch (err) {
+      alert("Erreur lors de la lecture du fichier : " + err.message);
     }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
   </script>
 </body>
 </html>
