@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Fiches de Personnage - La Vallée des Totems</title>
+  <script src="https://www.owlbear.rodeo/sdk.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -13,6 +14,7 @@
     }
     h2 { margin-top: 0; color: #ffaa00; text-align: center; }
     
+    /* Style du Bandeau Portrait */
     .banner-container {
       width: 100%;
       height: 100px;
@@ -64,6 +66,7 @@
     .grid-header.left { text-align: left; }
     label { font-weight: bold; }
     
+    /* Styles pour les dés et aspects fixes */
     .dice-val {
       font-family: monospace;
       font-weight: bold;
@@ -83,6 +86,7 @@
       text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
     }
 
+    /* --- CODE COULEUR ÉLÉMENTAIRE --- */
     .color-fire { color: #ff4d4d !important; }
     .bg-fire { background: #8b0000 !important; border: 1px solid #ff4d4d; }
 
@@ -95,6 +99,7 @@
     .color-earth { color: #f39c12 !important; }
     .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
 
+    /* Style du bouton de dés */
     .btn-dice {
       background: #ffaa00;
       color: #1a1a1a;
@@ -157,12 +162,8 @@
   <div class="grid" id="statsContainer"></div>
 
   <script>
-    (function(g){var e=g.OBR=g.OBR||{};e._listeners=[];e.onReady=function(c){if(e.isReady){c()}else{e._listeners.push(c)}};g.addEventListener("message",function(c){try{var d=JSON.parse(c.data);if(d.type Ulster==="OBR_READY"){e.isReady=true;e._listeners.forEach(function(f){f()})}}catch(h){}} flaps)})(window);
-  </script>
-
-  <script>
-    // Version v11 - Intégration blindée du SDK et double communication Dice+
-    const EXTENSION_ID = "com.monextension.fiches_simples_v11";
+    // Version v13 alignée à 100% sur la documentation officielle OBR Broadcast de Dice+
+    const EXTENSION_ID = "com.valleetotems.fiches_v13";
 
     const aspectTable = {
       "D12": 6,
@@ -203,75 +204,56 @@
     let selectedChar = "mayak";
     let isObrReady = false;
 
-    // ÉCOUTEUR UNIVERSEL DE MESSAGES INTER-EXTENSIONS (Iframe Fallback)
-    window.addEventListener("message", async function(event) {
-      try {
-        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        
-        // Intercepter la réponse de Dice+ même si le canal broadcast classique bégaye
-        if (data && (data.event === `${EXTENSION_ID}/roll-result` || data.type === "roll-result")) {
-          const rollResult = data.data || data;
-          if (rollResult && rollResult.result) {
-            console.log("Succès, résultat capturé :", rollResult.result.totalValue);
-            currentStats[selectedChar].initTour = rollResult.result.totalValue;
-            renderCharacter();
-            if(window.OBR && OBR.room) {
-              await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-            }
-          }
-        }
-      } catch (e) {}
-    });
-
     window.onload = function() {
       renderCharacter();
 
-      // Utilisation du mini-SDK autonome injecté
-      window.OBR.onReady(async () => {
+      if (typeof OBR === "undefined") {
+        console.warn("Le script OBR n'est pas encore détecté globalement.");
+        return;
+      }
+
+      // Attente de l'établissement du canal de communication officiel d'Owlbear
+      OBR.onReady(async () => {
         isObrReady = true;
-        console.log("SDK Owlbear Rodeo enfin connecté et prêt !");
+        console.log("SDK Owlbear Rodeo initialisé avec succès.");
 
-        try {
-          OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-result`, async (event) => {
-            const rollData = event.data;
-            if (rollData && rollData.result) {
-              currentStats[selectedChar].initTour = rollData.result.totalValue;
-              renderCharacter();
-              await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-            }
-          });
-        } catch (e) {
-          console.log("Broadcast channel restreint, écouteur window actif.");
-        }
+        // 1. ÉCOUTEUR DE RÉSULTATS dédié à notre ID source conformément à la doc
+        OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-result`, async (event) => {
+          const resultPayload = event.data;
+          if (resultPayload && resultPayload.result) {
+            console.log("Dice+ a renvoyé le score :", resultPayload.result.totalValue);
+            
+            // Mise à jour de la boîte d'initiative avec le vrai calcul de Dice+
+            currentStats[selectedChar].initTour = resultPayload.result.totalValue;
+            renderCharacter();
 
-        try {
-          OBR.room.onMetadataChange((metadata) => {
-            if (metadata[EXTENSION_ID]) {
-              mergeMetadata(metadata[EXTENSION_ID]);
-              renderCharacter();
-            }
-          });
-
-          const metadata = await OBR.room.getMetadata();
-          if (metadata[EXTENSION_ID]) {
-            mergeMetadata(metadata[EXTENSION_ID]);
-          } else {
+            // Synchronisation de la table
             await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
           }
-        } catch(err) {
-          console.log("Erreur d'accès aux métadonnées de la room.");
+        });
+
+        // 2. ÉCOUTEUR D'ERREURS dédié à notre ID source
+        OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-error`, (event) => {
+          console.error("Dice+ n'a pas pu exécuter la formule :", event.data.error);
+          calculSecoursLocal();
+        });
+
+        // Gestion de la synchronisation de la pièce
+        OBR.room.onMetadataChange((metadata) => {
+          if (metadata[EXTENSION_ID]) {
+            mergeMetadata(metadata[EXTENSION_ID]);
+            renderCharacter();
+          }
+        });
+
+        const metadata = await OBR.room.getMetadata();
+        if (metadata[EXTENSION_ID]) {
+          mergeMetadata(metadata[EXTENSION_ID]);
+        } else {
+          await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
         }
-        
         renderCharacter();
       });
-
-      // Système de secours au cas où l'environnement interdit complètement l'événement d'attente
-      setTimeout(() => {
-        if(!isObrReady) {
-          console.log("Activation du mode autonome forcé.");
-          isObrReady = true;
-        }
-      }, 1500);
     };
 
     function mergeMetadata(incoming) {
@@ -396,52 +378,76 @@
 
     async function updateStat(statKey, newValue) {
       currentStats[selectedChar][statKey] = newValue;
-      if(isObrReady && window.OBR && OBR.room) {
-        try { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } catch(e){}
+      if(isObrReady && OBR.room) {
+        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+      }
+    }
+
+    function calculSecoursLocal() {
+      // Si désactivation ou absence de Dice+, calcul mathématique local pour ne pas bloquer le joueur
+      const fireDiceStr = characterTemplates[selectedChar].fire;
+      const bonus = aspectTable[fireDiceStr];
+      const d12Result = Math.floor(Math.random() * 12) + 1;
+      currentStats[selectedChar].initTour = d12Result + bonus;
+      renderCharacter();
+      if(isObrReady && OBR.room) {
+        OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
       }
     }
 
     async function rollInitiative(bonus) {
+      // Affichage immédiat du statut d'attente
       currentStats[selectedChar].initTour = "🎲...";
       renderCharacter();
 
-      let pId = "player_1";
-      let pName = "Gandalf";
-      
-      try { if(OBR.player) { pId = await OBR.player.getId(); pName = await OBR.player.getName(); } } catch(e){}
-
-      const uniqueRollId = `roll_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-      const formula = `1d12${bonus >= 0 ? '+' : ''}${bonus}`;
-
-      const rollRequestPayload = {
-        rollId: uniqueRollId,
-        playerId: pId,
-        playerName: pName,
-        rollTarget: "everyone",
-        notation: formula,
-        diceNotation: formula,
-        showResults: true,
-        timestamp: Date.now(),
-        source: EXTENSION_ID
-      };
-
-      // 1. Envoi par le canal classique
-      try {
-        await OBR.broadcast.sendMessage("dice-plus/roll-request", rollRequestPayload, { destination: "ALL" });
-        console.log("Broadcast envoyé.");
-      } catch (error) {
-        console.log("Échec canal broadcast standard, bascule sur postMessage parent.");
+      // Si le SDK n'est pas prêt, on passe directement par le secours local
+      if (!isObrReady) {
+        console.log("Le SDK OBR n'est pas prêt. Utilisation du secours.");
+        calculSecoursLocal();
+        return;
       }
 
-      // 2. Envoi par postMessage direct au parent (Sécurité absolue si l'iframe est isolée)
       try {
-        window.parent.postMessage(JSON.stringify({
-          action: "broadcast",
-          channel: "dice-plus/roll-request",
-          data: rollRequestPayload,
-          options: { destination: "ALL" }
-        }), "*");
-      } catch(e){}
+        // Récupération dynamique et sécurisée des informations du joueur connecté
+        const pId = await OBR.player.getId();
+        const pName = await OBR.player.getName();
+        
+        const uniqueRollId = `roll_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const formula = `1d12${bonus >= 0 ? '+' : ''}${bonus}`;
+
+        // Payload STRICTEMENT conforme à la spécification transmise
+        const rollPayload = {
+          rollId: uniqueRollId,
+          playerId: pId,
+          playerName: pName,
+          rollTarget: 'everyone',
+          diceNotation: formula,
+          showResults: true, // Affiche l'animation 3D et le popup par défaut de Dice+
+          timestamp: Date.now(),
+          source: EXTENSION_ID
+        };
+
+        // ENVOI OFFICIEL par le canal de communication broadcast d'Owlbear Rodeo
+        await OBR.broadcast.sendMessage(
+          "dice-plus/roll-request",
+          rollPayload,
+          { destination: 'ALL' }
+        );
+
+        console.log("Requête de jet transmise à Dice+ :", formula);
+
+        // SÉCURITÉ ANTI-BLOCAGE : Si Dice+ est inactif ou désactivé, on débloque au bout de 3 secondes
+        setTimeout(() => {
+          if (currentStats[selectedChar].initTour === "🎲...") {
+            console.warn("Dice+ n'a pas répondu à temps. Bascule sur le calcul local.");
+            calculSecoursLocal();
+          }
+        }, 3000);
+
+      } catch (error) {
+        console.error("Erreur critique lors de la tentative de jet :", error);
+        calculSecoursLocal();
+      }
     }
   </script>
 </body>
