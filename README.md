@@ -1,1 +1,2 @@
-Simple test de plugin pour Owlbear rodeo
+Extension pour Owlbear rodeo
+Dungeons Factory - 2026
