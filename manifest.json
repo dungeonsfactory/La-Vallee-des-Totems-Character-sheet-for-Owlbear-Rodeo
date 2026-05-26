@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "manifest_version": 1,
   "icon": "/icon.svg",
-  "background_color": "#1e1e24",
   "action": {
     "title": "Fiches Perso",
     "icon": "/icon.svg",
