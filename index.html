@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Fiches de Personnage - La Vallée des Totems</title>
-  <script src="https://www.owlbear.rodeo/sdk.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -12,8 +12,33 @@
       margin: 0;
       padding: 15px;
     }
-    h2 { margin-top: 0; color: #ffaa00; text-align: center; }
+    h2 { margin-top: 0; color: #ffaa00; text-align: center; margin-bottom: 5px; }
     
+    /* Zone Import/Export style Embers */
+    .io-panel {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      background: #222;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #333;
+    }
+    .btn-io {
+      background: #444;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .btn-io:hover { background: #555; border-color: #ffaa00; }
+    #fileInput { display: none; }
+
+    /* Style du Bandeau Portrait */
     .banner-container {
       width: 100%;
       height: 100px;
@@ -65,6 +90,7 @@
     .grid-header.left { text-align: left; }
     label { font-weight: bold; }
     
+    /* Styles pour les dés et aspects fixes */
     .dice-val {
       font-family: monospace;
       font-weight: bold;
@@ -84,7 +110,7 @@
       text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
     }
 
-    /* COULEURS */
+    /* --- CODE COULEUR ÉLÉMENTAIRE --- */
     .color-fire { color: #ff4d4d !important; }
     .bg-fire { background: #8b0000 !important; border: 1px solid #ff4d4d; }
 
@@ -97,6 +123,7 @@
     .color-earth { color: #f39c12 !important; }
     .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
 
+    /* Nouveau style pour le bouton de dés */
     .btn-dice {
       background: #ffaa00;
       color: #1a1a1a;
@@ -142,6 +169,12 @@
 <body>
 
   <h2>Fiche de Personnage</h2>
+
+  <div class="io-panel">
+    <button class="btn-io" onclick="exportCampaignText()">💾 Sauvegarder Campagne</button>
+    <button class="btn-io" onclick="document.getElementById('fileInput').click()">📂 Charger Fichier</button>
+    <input type="file" id="fileInput" accept=".json" onchange="importCampaignText(event)">
+  </div>
   
   <div class="banner-container">
     <img id="charBanner" src="" alt="Portrait" class="banner-img" />
@@ -159,8 +192,8 @@
   <div class="grid" id="statsContainer"></div>
 
   <script>
-    // Version v14 - Intégration du système de Ready Check asynchrone pour s'aligner sur Dice+
-    const EXTENSION_ID = "com.valleetotems.fiches_v14";
+    const EXTENSION_ID = "com.monextension.fiches_simples";
+    const DICE_PLUS_ID = "com.missinglinkdev.diceplus";
 
     const aspectTable = {
       "D12": 6,
@@ -199,90 +232,23 @@
 
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
-    let isDicePlusReady = false;
 
-    // Rendu initial direct pour que l'interface s'affiche quoi qu'il arrive
-    renderCharacter();
-
-    // Au lieu de window.onload brut, on attend via une boucle infinie que OBR soit injecté
-    const checkObrInterval = setInterval(() => {
-      if (typeof OBR !== "undefined") {
-        clearInterval(checkObrInterval);
-        initialiserExtension();
-      }
-    }, 100);
-
-    function initialiserExtension() {
-      OBR.onReady(async () => {
-        console.log("SDK Owlbear Rodeo intercepté. Lancement de la synchronisation...");
-
-        // 1. Écouteur pour les résultats de dés
-        OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-result`, async (event) => {
-          const resultPayload = event.data;
-          if (resultPayload && resultPayload.result) {
-            console.log("Score intercepté depuis Dice+ :", resultPayload.result.totalValue);
-            currentStats[selectedChar].initTour = resultPayload.result.totalValue;
-            renderCharacter();
-            await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-          }
-        });
-
-        // 2. Écouteur pour les erreurs de dés
-        OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-error`, (event) => {
-          console.error("Erreur renvoyée par Dice+ :", event.data.error);
-          calculSecoursLocal();
-        });
-
-        // 3. Gestionnaire de métadonnées pour la room
-        OBR.room.onMetadataChange((metadata) => {
-          if (metadata[EXTENSION_ID]) {
-            mergeMetadata(metadata[EXTENSION_ID]);
-            renderCharacter();
-          }
-        });
-
-        const metadata = await OBR.room.getMetadata();
+    OBR.onReady(async () => {
+      OBR.room.onMetadataChange((metadata) => {
         if (metadata[EXTENSION_ID]) {
           mergeMetadata(metadata[EXTENSION_ID]);
-        } else {
-          await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-        }
-        renderCharacter();
-
-        // 4. PROTOCOLE DE READY CHECK SPECIFIQUE DICE+
-        conserverConnexionDicePlus();
-      });
-    }
-
-    function conserverConnexionDicePlus() {
-      const checkId = `req_${Date.now()}`;
-      
-      // On écoute la réponse de Dice+ sur le canal isReady
-      const unsubscribe = OBR.broadcast.onMessage("dice-plus/isReady", (event) => {
-        const data = event.data;
-        if (data && 'ready' in data && data.requestId === checkId) {
-          console.log("🎯 Liaison établie avec Dice+ ! Mode connecté activé.");
-          isDicePlusReady = true;
-          unsubscribe();
+          renderCharacter();
         }
       });
 
-      // On envoie la demande de statut
-      console.log("Ping envoyé vers Dice+...");
-      OBR.broadcast.sendMessage("dice-plus/isReady", {
-        requestId: checkId,
-        timestamp: Date.now()
-      }, { destination: 'ALL' });
-
-      // Si pas de réponse après 2.5 secondes, on relance un ping (Dice+ est peut-être encore en train de charger)
-      setTimeout(() => {
-        if (!isDicePlusReady) {
-          unsubscribe();
-          console.log("Dice+ met du temps à répondre, relance du ping...");
-          conserverConnexionDicePlus();
-        }
-      }, 2500);
-    }
+      const metadata = await OBR.room.getMetadata();
+      if (metadata[EXTENSION_ID]) {
+        mergeMetadata(metadata[EXTENSION_ID]);
+      } else {
+        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+      }
+      renderCharacter();
+    });
 
     function mergeMetadata(incoming) {
       for (const charKey in defaultDynamicStats) {
@@ -312,6 +278,7 @@
       const container = document.getElementById("statsContainer");
       container.innerHTML = ""; 
 
+      // --- SECTION 1 : EN-TÊTES ET TOTEMS ---
       const hLabel = document.createElement("div"); hLabel.className = "grid-header left"; hLabel.innerText = "Totem";
       const hDede = document.createElement("div"); hDede.className = "grid-header"; hDede.innerText = "Dé";
       const hAspect = document.createElement("div"); hAspect.className = "grid-header"; hAspect.innerText = "Aspect";
@@ -335,13 +302,16 @@
         container.appendChild(aspectEl);
       }
 
+      // Séparateur
       container.appendChild(document.createElement("hr"));
 
+      // --- SECTION 2 : BLOC DYNAMIQUE ---
       const fireDiceStr = template.fire; 
       const fireDiceNum = parseInt(fireDiceStr.replace("D", ""), 10); 
       const fireAspectVal = aspectTable[fireDiceStr]; 
-      const mouvementCalcul = Math.floor(fireDiceNum / 2); 
+      function mouvementCalcul() { return Math.floor(fireDiceNum / 2); } // Ajout du mot-clé "function" corrigé ici
 
+      // Ligne Initiative de base
       const initLabel = document.createElement("label");
       initLabel.innerText = "Initiative (Base)";
       const initBonusEl = document.createElement("div");
@@ -353,6 +323,7 @@
       container.appendChild(initLabel);
       container.appendChild(initBonusEl);
 
+      // Ligne Initiative pour le tour
       const initTourLabel = document.createElement("label");
       initTourLabel.innerText = "Initiative du Tour";
       
@@ -369,15 +340,17 @@
       container.appendChild(btnInit);
       container.appendChild(initTourVal);
 
+      // Ligne Mouvement
       const movLabel = document.createElement("label");
       movLabel.innerText = "Mouvement";
       const movVal = document.createElement("div");
       movVal.className = "dice-val";
       movVal.style.gridColumn = "span 2";
-      movVal.innerText = `${mouvementCalcul} cases`;
+      movVal.innerText = `${mouvementCalcul()} cases`;
       container.appendChild(movLabel);
       container.appendChild(movVal);
 
+      // Ligne Manœuvre
       const manLabel = document.createElement("label");
       manLabel.innerText = "Manœuvre";
       const manVal = document.createElement("div");
@@ -387,8 +360,10 @@
       container.appendChild(manLabel);
       container.appendChild(manVal);
 
+      // Séparateur
       container.appendChild(document.createElement("hr"));
 
+      // --- SECTION 3 : VALEURS SECONDAIRES ---
       for (const [key, label] of Object.entries(secondaryConfig)) {
         const labelEl = document.createElement("label");
         labelEl.innerText = label;
@@ -406,71 +381,68 @@
 
     async function updateStat(statKey, newValue) {
       currentStats[selectedChar][statKey] = newValue;
-      if (typeof OBR !== "undefined" && OBR.room) {
-        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-      }
-    }
-
-    function calculSecoursLocal() {
-      const fireDiceStr = characterTemplates[selectedChar].fire;
-      const bonus = aspectTable[fireDiceStr];
-      const d12Result = Math.floor(Math.random() * 12) + 1;
-      currentStats[selectedChar].initTour = d12Result + bonus;
-      renderCharacter();
-      if (typeof OBR !== "undefined" && OBR.room) {
-        OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-      }
+      await OBR.room.setMetadata({
+        [EXTENSION_ID]: currentStats
+      });
     }
 
     async function rollInitiative(bonus) {
-      currentStats[selectedChar].initTour = "🎲...";
+      const d12Result = Math.floor(Math.random() * 12) + 1;
+      const totalInit = d12Result + bonus;
+
+      currentStats[selectedChar].initTour = totalInit;
+      await OBR.room.setMetadata({
+        [EXTENSION_ID]: currentStats
+      });
       renderCharacter();
 
-      // Si Dice+ n'a pas répondu présent aux pings, on applique la sécurité immédiate
-      if (!isDicePlusReady) {
-        console.warn("Dice+ n'est pas encore synchronisé. Calcul local.");
-        calculSecoursLocal();
-        return;
-      }
-
       try {
-        const pId = await OBR.player.getId();
-        const pName = await OBR.player.getName();
-        
-        const uniqueRollId = `roll_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const formula = `1d12${bonus >= 0 ? '+' : ''}${bonus}`;
-
-        const rollPayload = {
-          rollId: uniqueRollId,
-          playerId: pId,
-          playerName: pName,
-          rollTarget: 'everyone',
-          diceNotation: formula,
-          showResults: true, 
-          timestamp: Date.now(),
-          source: EXTENSION_ID
-        };
-
-        await OBR.broadcast.sendMessage(
-          "dice-plus/roll-request",
-          rollPayload,
-          { destination: 'ALL' }
-        );
-
-        console.log("Demande de jet envoyée :", formula);
-
-        // Sécurité au cas où le dé reste bloqué sur la table
-        setTimeout(() => {
-          if (currentStats[selectedChar].initTour === "🎲...") {
-            console.warn("Délai dépassé pour la réponse du dé. Secours local.");
-            calculSecoursLocal();
-          }
-        }, 5000);
-
+        await OBR.messaging.sendMessage(DICE_PLUS_ID, {
+          roll: `1d12${bonus >= 0 ? '+' : ''}${bonus}`,
+          whisper: false
+        });
       } catch (error) {
-        console.error("Échec du broadcast :", error);
-        calculSecoursLocal();
+        console.log("Dice+ n'est pas activé ou installé, calcul purement local effectué.");
       }
+    }
+
+    /* --- FONCTIONS DE SAUVEGARDE TEXTE (STYLE EMBERS) --- */
+    function exportCampaignText() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentStats, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "campagne_vallee_totems.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importCampaignText(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          const importedStats = JSON.parse(e.target.result);
+          
+          // Vérification rapide de la structure
+          if (importedStats.mayak && importedStats.bawak) {
+            currentStats = importedStats;
+            // Synchronisation avec Owlbear Rodeo
+            await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+            renderCharacter();
+            alert("Campagne chargée avec succès !");
+          } else {
+            alert("Le fichier choisi n'est pas un fichier de sauvegarde valide pour la Vallée des Totems.");
+          }
+        } catch (err) {
+          alert("Erreur lors de la lecture du fichier de sauvegarde.");
+        }
+      };
+      reader.readAsText(file);
+      // Reset l'input pour pouvoir charger le même fichier deux fois si besoin
+      event.target.value = '';
     }
   </script>
 </body>
