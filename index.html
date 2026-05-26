@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Fiches de Personnage - La Vallée des Totems</title>
-  <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk/dist/umd/index.js"></script>
+  <script src="https://www.owlbear.rodeo/sdk.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -159,11 +159,11 @@
 
   <div id="characterClass" class="classe">-</div>
 
-  <div class="grid" id="statsContainer">
-    </div>
+  <div class="grid" id="statsContainer"></div>
 
   <script>
-    const EXTENSION_ID = "com.monextension.fiches_simples_v2";
+    // Passage en v4 pour forcer la mise à jour complète du stockage de la room
+    const EXTENSION_ID = "com.monextension.fiches_simples_v4";
     const DICE_PLUS_ID = "com.missinglinkdev.diceplus";
 
     const aspectTable = {
@@ -204,28 +204,26 @@
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
 
+    // Initialisation sécurisée globale conforme à Owlbear Rodeo OBR
     window.onload = function() {
-      // Dans la version UMD, OBR est directement injecté dans la fenêtre globale (window)
-      const obrApi = window.OBR || (window.unbxd && window.unbxd.OBR);
-      
-      if (!obrApi) {
-        console.error("Le SDK Owlbear Rodeo n'est pas accessible.");
+      if (typeof OBR === "undefined") {
+        console.error("Le script global OBR n'a pas pu être initialisé.");
         return;
       }
 
-      obrApi.onReady(async () => {
-        obrApi.room.onMetadataChange((metadata) => {
+      OBR.onReady(async () => {
+        OBR.room.onMetadataChange((metadata) => {
           if (metadata[EXTENSION_ID]) {
             mergeMetadata(metadata[EXTENSION_ID]);
             renderCharacter();
           }
         });
 
-        const metadata = await obrApi.room.getMetadata();
+        const metadata = await OBR.room.getMetadata();
         if (metadata[EXTENSION_ID]) {
           mergeMetadata(metadata[EXTENSION_ID]);
         } else {
-          await obrApi.room.setMetadata({ [EXTENSION_ID]: currentStats });
+          await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
         }
         renderCharacter();
       });
@@ -259,7 +257,6 @@
       const container = document.getElementById("statsContainer");
       container.innerHTML = ""; 
 
-      // --- SECTION 1 : EN-TÊTES ET TOTEMS ---
       const hLabel = document.createElement("div"); hLabel.className = "grid-header left"; hLabel.innerText = "Totem";
       const hDede = document.createElement("div"); hDede.className = "grid-header"; hDede.innerText = "Dé";
       const hAspect = document.createElement("div"); hAspect.className = "grid-header"; hAspect.innerText = "Aspect";
@@ -283,16 +280,13 @@
         container.appendChild(aspectEl);
       }
 
-      // Séparateur
       container.appendChild(document.createElement("hr"));
 
-      // --- SECTION 2 : BLOC DYNAMIQUE ---
       const fireDiceStr = template.fire; 
       const fireDiceNum = parseInt(fireDiceStr.replace("D", ""), 10); 
       const fireAspectVal = aspectTable[fireDiceStr]; 
       const mouvementCalcul = Math.floor(fireDiceNum / 2); 
 
-      // Ligne Initiative de base
       const initLabel = document.createElement("label");
       initLabel.innerText = "Initiative (Base)";
       const initBonusEl = document.createElement("div");
@@ -304,7 +298,6 @@
       container.appendChild(initLabel);
       container.appendChild(initBonusEl);
 
-      // Ligne Bouton Lancer Initiative
       const initTourLabel = document.createElement("label");
       initTourLabel.innerText = "Initiative du Tour";
       
@@ -321,7 +314,6 @@
       container.appendChild(btnInit);
       container.appendChild(initTourVal);
 
-      // Ligne Mouvement
       const movLabel = document.createElement("label");
       movLabel.innerText = "Mouvement";
       const movVal = document.createElement("div");
@@ -331,7 +323,6 @@
       container.appendChild(movLabel);
       container.appendChild(movVal);
 
-      // Ligne Manœuvre
       const manLabel = document.createElement("label");
       manLabel.innerText = "Manœuvre";
       const manVal = document.createElement("div");
@@ -341,10 +332,8 @@
       container.appendChild(manLabel);
       container.appendChild(manVal);
 
-      // Séparateur
       container.appendChild(document.createElement("hr"));
 
-      // --- SECTION 3 : VALEURS SECONDAIRES ---
       for (const [key, label] of Object.entries(secondaryConfig)) {
         const labelEl = document.createElement("label");
         labelEl.innerText = label;
@@ -361,36 +350,34 @@
     }
 
     async function updateStat(statKey, newValue) {
-      const obrApi = window.OBR || (window.unbxd && window.unbxd.OBR);
-      currentStats[selectedChar][statKey] = newValue;
-      if(obrApi && obrApi.room) {
-        await obrApi.room.setMetadata({
+      if(typeof OBR !== "undefined" && OBR.room) {
+        currentStats[selectedChar][statKey] = newValue;
+        await OBR.room.setMetadata({
           [EXTENSION_ID]: currentStats
         });
       }
     }
 
     async function rollInitiative(bonus) {
-      const obrApi = window.OBR || (window.unbxd && window.unbxd.OBR);
+      if(typeof OBR === "undefined" || !OBR.room) return;
+
       const d12Result = Math.floor(Math.random() * 12) + 1;
       const totalInit = d12Result + bonus;
 
       currentStats[selectedChar].initTour = totalInit;
       
-      if(obrApi && obrApi.room) {
-        await obrApi.room.setMetadata({
-          [EXTENSION_ID]: currentStats
-        });
-        renderCharacter();
+      await OBR.room.setMetadata({
+        [EXTENSION_ID]: currentStats
+      });
+      renderCharacter();
 
-        try {
-          await obrApi.messaging.sendMessage(DICE_PLUS_ID, {
-            roll: `1d12${bonus >= 0 ? '+' : ''}${bonus}`,
-            whisper: false
-          });
-        } catch (error) {
-          console.log("Dice+ non détecté ou inactif.");
-        }
+      try {
+        await OBR.messaging.sendMessage(DICE_PLUS_ID, {
+          roll: `1d12${bonus >= 0 ? '+' : ''}${bonus}`,
+          whisper: false
+        });
+      } catch (error) {
+        console.log("Extension Dice+ non configurée ou indisponible dans cette room.");
       }
     }
   </script>
