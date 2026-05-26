@@ -2,11 +2,11 @@
   "name": "Feuille d'Aventure pour La Vallée des Totems",
   "version": "1.1.0",
   "manifest_version": 1,
-  "icon": "https://dungeonsfactory.github.io/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/df_logo.png",
+  "icon": "df_logo.png",
   "action": {
-    "title": "Fiches Perso",
-    "icon": "https://dungeonsfactory.github.io/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/df_logo.png",
-    "popover": "https://dungeonsfactory.github.io/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/index.html",
+    "title": "Fiche d'Aventure",
+    "icon": "df_logo.png",
+    "popover": "index.html",
     "height": 700,
     "width": 400
   }
