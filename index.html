@@ -70,9 +70,24 @@
       text-align: center;
       font-style: italic;
       color: #aaa;
-      margin-bottom: 15px;
+      margin-bottom: 5px;
       font-size: 14px;
     }
+
+    /* Section Profil (Âge, Taille, Poids) */
+    .profil-box {
+      display: flex;
+      justify-content: space-around;
+      background: #222;
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      border: 1px solid #333;
+      font-size: 13px;
+    }
+    .profil-item { text-align: center; }
+    .profil-item span { display: block; color: #ffaa00; font-weight: bold; font-size: 15px; margin-top: 2px; }
+
     .grid {
       display: grid;
       grid-template-columns: 1fr auto auto;
@@ -123,7 +138,6 @@
     .color-earth { color: #f39c12 !important; }
     .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
 
-    /* Nouveau style pour le bouton de dés */
     .btn-dice {
       background: #ffaa00;
       color: #1a1a1a;
@@ -134,9 +148,7 @@
       cursor: pointer;
       font-size: 12px;
     }
-    .btn-dice:hover {
-      background: #ffc44d;
-    }
+    .btn-dice:hover { background: #ffc44d; }
 
     .init-tour-box {
       background: #333;
@@ -159,10 +171,7 @@
       text-align: center;
       font-size: 15px;
     }
-    input[type="number"]:focus {
-      border-color: #ffaa00;
-      outline: none;
-    }
+    input[type="number"]:focus { border-color: #ffaa00; outline: none; }
     hr { border: 0; border-top: 1px solid #444; margin: 15px 0; grid-column: span 3; }
   </style>
 </head>
@@ -189,6 +198,12 @@
 
   <div id="characterClass" class="classe">-</div>
 
+  <div class="profil-box">
+    <div class="profil-item">Âge<span id="p-age">-</span></div>
+    <div class="profil-item">Taille<span id="p-taille">-</span></div>
+    <div class="profil-item">Poids<span id="p-poids">-</span></div>
+  </div>
+
   <div class="grid" id="statsContainer"></div>
 
   <script>
@@ -210,10 +225,10 @@
     };
 
     const defaultDynamicStats = {
-      mayak: { res: 22, choc: 16, lien: 14, essence: 18, initTour: "-" },
-      bawak: { res: 18, choc: 20, lien: 21, essence: 18, initTour: "-" },
-      cylak: { res: 15, choc: 18, lien: 18, essence: 24, initTour: "-" },
-      borak: { res: 24, choc: 20, lien: 15, essence: 14, initTour: "-" }
+      mayak: { res: 22, choc: 16, lien: 14, essence: 18, initTour: "-", age: 0, taille: 0, poids: 0 },
+      bawak: { res: 18, choc: 20, lien: 21, essence: 18, initTour: "-", age: 0, taille: 0, poids: 0 },
+      cylak: { res: 15, choc: 18, lien: 18, essence: 24, initTour: "-", age: 0, taille: 0, poids: 0 },
+      borak: { res: 24, choc: 20, lien: 15, essence: 14, initTour: "-", age: 0, taille: 0, poids: 0 }
     };
 
     const totemsConfig = {
@@ -232,6 +247,13 @@
 
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
+
+    // Lancement immédiat de l'interface par défaut avant même de causer à OBR
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("charSelect").value = "mayak";
+      selectedChar = "mayak";
+      renderCharacter();
+    });
 
     OBR.onReady(async () => {
       OBR.room.onMetadataChange((metadata) => {
@@ -268,17 +290,48 @@
       renderCharacter();
     }
 
-    function renderCharacter() {
+    async function verifierEtCalculerPhysique() {
+      const dynamic = currentStats[selectedChar];
+      const template = characterTemplates[selectedChar];
+
+      if (!dynamic.age || dynamic.age === 0 || !dynamic.taille || dynamic.taille === 0 || !dynamic.poids || dynamic.poids === 0) {
+        const deTerre = parseInt(template.earth.replace("D", ""), 10);
+        const deEau = parseInt(template.water.replace("D", ""), 10);
+        const deFeu = parseInt(template.fire.replace("D", ""), 10);
+
+        const aspectEau = aspectTable[template.water];
+        const aspectTerre = aspectTable[template.earth];
+
+        const jet3d12 = (Math.floor(Math.random() * 12) + 1) + (Math.floor(Math.random() * 12) + 1) + (Math.floor(Math.random() * 12) + 1);
+        const jet2d12 = (Math.floor(Math.random() * 12) + 1) + (Math.floor(Math.random() * 12) + 1);
+
+        dynamic.age = 21 + aspectEau + aspectTerre;
+        dynamic.poids = 30 + (2 * deTerre) + deEau + jet3d12;
+        dynamic.taille = 80 + (4 * deTerre) + (4 * deFeu) + jet2d12;
+
+        // On essaie de sauvegarder si OBR est dispo, sinon tant pis pour l'instant
+        try {
+          await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+        } catch(e) {}
+      }
+    }
+
+    async function renderCharacter() {
+      await verifierEtCalculerPhysique();
+
       const template = characterTemplates[selectedChar];
       const dynamic = currentStats[selectedChar];
       
       document.getElementById("charBanner").src = template.image;
       document.getElementById("characterClass").innerText = template.class;
 
+      document.getElementById("p-age").innerText = `${dynamic.age} ans`;
+      document.getElementById("p-taille").innerText = `${dynamic.taille} cm`;
+      document.getElementById("p-poids").innerText = `${dynamic.poids} kg`;
+
       const container = document.getElementById("statsContainer");
       container.innerHTML = ""; 
 
-      // --- SECTION 1 : EN-TÊTES ET TOTEMS ---
       const hLabel = document.createElement("div"); hLabel.className = "grid-header left"; hLabel.innerText = "Totem";
       const hDede = document.createElement("div"); hDede.className = "grid-header"; hDede.innerText = "Dé";
       const hAspect = document.createElement("div"); hAspect.className = "grid-header"; hAspect.innerText = "Aspect";
@@ -302,16 +355,13 @@
         container.appendChild(aspectEl);
       }
 
-      // Séparateur
       container.appendChild(document.createElement("hr"));
 
-      // --- SECTION 2 : BLOC DYNAMIQUE ---
       const fireDiceStr = template.fire; 
       const fireDiceNum = parseInt(fireDiceStr.replace("D", ""), 10); 
       const fireAspectVal = aspectTable[fireDiceStr]; 
-      function mouvementCalcul() { return Math.floor(fireDiceNum / 2); } // Ajout du mot-clé "function" corrigé ici
+      function mouvementCalcul() { return Math.floor(fireDiceNum / 2); }
 
-      // Ligne Initiative de base
       const initLabel = document.createElement("label");
       initLabel.innerText = "Initiative (Base)";
       const initBonusEl = document.createElement("div");
@@ -323,7 +373,6 @@
       container.appendChild(initLabel);
       container.appendChild(initBonusEl);
 
-      // Ligne Initiative pour le tour
       const initTourLabel = document.createElement("label");
       initTourLabel.innerText = "Initiative du Tour";
       
@@ -340,7 +389,6 @@
       container.appendChild(btnInit);
       container.appendChild(initTourVal);
 
-      // Ligne Mouvement
       const movLabel = document.createElement("label");
       movLabel.innerText = "Mouvement";
       const movVal = document.createElement("div");
@@ -350,7 +398,6 @@
       container.appendChild(movLabel);
       container.appendChild(movVal);
 
-      // Ligne Manœuvre
       const manLabel = document.createElement("label");
       manLabel.innerText = "Manœuvre";
       const manVal = document.createElement("div");
@@ -360,10 +407,8 @@
       container.appendChild(manLabel);
       container.appendChild(manVal);
 
-      // Séparateur
       container.appendChild(document.createElement("hr"));
 
-      // --- SECTION 3 : VALEURS SECONDAIRES ---
       for (const [key, label] of Object.entries(secondaryConfig)) {
         const labelEl = document.createElement("label");
         labelEl.innerText = label;
@@ -402,11 +447,10 @@
           whisper: false
         });
       } catch (error) {
-        console.log("Dice+ n'est pas activé ou installé, calcul purement local effectué.");
+        console.log("Dice+ non disponible, calcul local uniquement.");
       }
     }
 
-    /* --- FONCTIONS DE SAUVEGARDE TEXTE (STYLE EMBERS) --- */
     function exportCampaignText() {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentStats, null, 2));
       const downloadAnchor = document.createElement('a');
@@ -426,24 +470,22 @@
         try {
           const importedStats = JSON.parse(e.target.result);
           
-          // Vérification rapide de la structure
           if (importedStats.mayak && importedStats.bawak) {
             currentStats = importedStats;
-            // Synchronisation avec Owlbear Rodeo
             await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
             renderCharacter();
             alert("Campagne chargée avec succès !");
           } else {
-            alert("Le fichier choisi n'est pas un fichier de sauvegarde valide pour la Vallée des Totems.");
+            alert("Fichier non valide pour la Vallée des Totems.");
           }
         } catch (err) {
-          alert("Erreur lors de la lecture du fichier de sauvegarde.");
+          alert("Erreur lors de la lecture du fichier.");
         }
       };
       reader.readAsText(file);
-      // Reset l'input pour pouvoir charger le même fichier deux fois si besoin
       event.target.value = '';
     }
   </script>
 </body>
+</html>
 </html>
