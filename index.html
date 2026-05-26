@@ -162,8 +162,8 @@
   <div class="grid" id="statsContainer"></div>
 
   <script>
-    // Passage en v4 pour forcer la mise à jour complète du stockage de la room
-    const EXTENSION_ID = "com.monextension.fiches_simples_v4";
+    // Identifiant unique v5 pour vider le cache d'Owlbear Rodeo
+    const EXTENSION_ID = "com.monextension.fiches_simples_v5";
     const DICE_PLUS_ID = "com.missinglinkdev.diceplus";
 
     const aspectTable = {
@@ -203,15 +203,25 @@
 
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
+    let isObrReady = false;
 
-    // Initialisation sécurisée globale conforme à Owlbear Rodeo OBR
+    // Gestion de l'initialisation de la page
     window.onload = function() {
+      // 1. On dessine la fiche immédiatement avec les données locales (évite la fenêtre vide)
+      renderCharacter();
+
+      // 2. Vérification de la présence globale du SDK
       if (typeof OBR === "undefined") {
-        console.error("Le script global OBR n'a pas pu être initialisé.");
+        console.warn("Le SDK OBR global est introuvable. Mode déconnecté activé.");
         return;
       }
 
+      // 3. Attente sécurisée du signal d'Owlbear Rodeo
       OBR.onReady(async () => {
+        isObrReady = true;
+        console.log("SDK Owlbear Rodeo initialisé avec succès.");
+
+        // Écouteur des changements faits par les autres joueurs sur la table
         OBR.room.onMetadataChange((metadata) => {
           if (metadata[EXTENSION_ID]) {
             mergeMetadata(metadata[EXTENSION_ID]);
@@ -219,6 +229,7 @@
           }
         });
 
+        // Récupération initiale de la base de données de la room
         const metadata = await OBR.room.getMetadata();
         if (metadata[EXTENSION_ID]) {
           mergeMetadata(metadata[EXTENSION_ID]);
@@ -350,8 +361,8 @@
     }
 
     async function updateStat(statKey, newValue) {
-      if(typeof OBR !== "undefined" && OBR.room) {
-        currentStats[selectedChar][statKey] = newValue;
+      currentStats[selectedChar][statKey] = newValue;
+      if(isObrReady && OBR.room) {
         await OBR.room.setMetadata({
           [EXTENSION_ID]: currentStats
         });
@@ -359,25 +370,27 @@
     }
 
     async function rollInitiative(bonus) {
-      if(typeof OBR === "undefined" || !OBR.room) return;
-
       const d12Result = Math.floor(Math.random() * 12) + 1;
       const totalInit = d12Result + bonus;
 
       currentStats[selectedChar].initTour = totalInit;
-      
-      await OBR.room.setMetadata({
-        [EXTENSION_ID]: currentStats
-      });
       renderCharacter();
 
-      try {
-        await OBR.messaging.sendMessage(DICE_PLUS_ID, {
-          roll: `1d12${bonus >= 0 ? '+' : ''}${bonus}`,
-          whisper: false
+      if(isObrReady && OBR.room) {
+        await OBR.room.setMetadata({
+          [EXTENSION_ID]: currentStats
         });
-      } catch (error) {
-        console.log("Extension Dice+ non configurée ou indisponible dans cette room.");
+
+        try {
+          await OBR.messaging.sendMessage(DICE_PLUS_ID, {
+            roll: `1d12${bonus >= 0 ? '+' : ''}${bonus}`,
+            whisper: false
+          });
+        } catch (error) {
+          console.log("Extension Dice+ absente ou non utilisable dans cette room.");
+        }
+      } else {
+        console.log("Lancement effectué hors ligne (Mode local) :", totalInit);
       }
     }
   </script>
