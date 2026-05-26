@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Fiches de Personnage</title>
+  <!-- Inclusion du SDK Owlbear Rodeo -->
+  <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 15px;
+    }
+    h2 { margin-top: 0; color: #ffaa00; text-align: center; }
+    select {
+      width: 100%;
+      padding: 10px;
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+    .classe {
+      text-align: center;
+      font-style: italic;
+      color: #aaa;
+      margin-bottom: 15px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    label { font-weight: bold; }
+    input[type="number"] {
+      width: 60px;
+      padding: 5px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 4px;
+      text-align: center;
+      font-size: 15px;
+    }
+    input[type="number"]:focus {
+      border-color: #ffaa00;
+      outline: none;
+    }
+    hr { border: 0; border-top: 1px solid #444; margin: 15px 0; }
+  </style>
+</head>
+<body>
+
+  <h2>Fiches de Personnage</h2>
+  
+  <!-- Sélecteur de personnage -->
+  <select id="charSelect" onchange="changeCharacter()">
+    <option value="mayak">Mayak</option>
+    <option value="bawak">Bawak</option>
+    <option value="cylak">Cylak</option>
+    <option value="borak">Borak</option>
+  </select>
+
+  <div id="characterClass" class="classe">-</div>
+
+  <!-- Formulaire dynamique des caractéristiques -->
+  <div class="grid" id="statsContainer">
+    <!-- Rempli dynamiquement en JS -->
+  </div>
+
+  <script>
+    // Identifiant unique pour la synchronisation de l'extension
+    const EXTENSION_ID = "com.monextension.fiches_simples";
+
+    // Données initiales par défaut
+    const defaultCharacters = {
+      mayak: { name: "Mayak", class: "Chasseresse", fire: 12, water: 6, air: 8, earth: 10, res: 22, choc: 16, lien: 14, essence: 18 },
+      bawak: { name: "Bawak", class: "Guérisseur", fire: 6, water: 12, air: 10, earth: 8, res: 18, choc: 20, lien: 21, essence: 18 },
+      cylak: { name: "Cylak", class: "Sorçière", fire: 10, water: 8, air: 12, earth: 6, res: 15, choc: 18, lien: 18, essence: 24 },
+      borak: { name: "Borak", class: "Protecteur", fire: 10, water: 8, air: 6, earth: 12, res: 24, choc: 20, lien: 15, essence: 14 }
+    };
+
+    // Label des caractéristiques pour l'affichage propre
+    const statLabels = {
+      fire: "Totem de Feu",
+      water: "Totem d'Eau",
+      air: "Totem d'Air",
+      earth: "Totem de Terre",
+      separator: "hr", // Pour mettre une ligne de séparation visuelle
+      res: "Valeur de Résistance",
+      choc: "Valeur de Choc",
+      lien: "Valeur de Lien",
+      essence: "Valeur d'Essence"
+    };
+
+    let currentStats = JSON.parse(JSON.stringify(defaultCharacters));
+    let selectedChar = "mayak";
+
+    // Initialisation du SDK d'Owlbear Rodeo
+    OBR.onReady(async () => {
+      // Écouter les changements en ligne (provenant des autres joueurs/MJ)
+      OBR.room.onMetadataChange((metadata) => {
+        if (metadata[EXTENSION_ID]) {
+          currentStats = metadata[EXTENSION_ID];
+          renderCharacter();
+        }
+      });
+
+      // Récupérer les données déjà existantes dans la room au démarrage
+      const metadata = await OBR.room.getMetadata();
+      if (metadata[EXTENSION_ID]) {
+        currentStats = metadata[EXTENSION_ID];
+      } else {
+        // Si première fois, on initialise la room avec nos données par défaut
+        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+      }
+      renderCharacter();
+    });
+
+    // Changer de personnage via le menu déroulant
+    function changeCharacter() {
+      selectedChar = document.getElementById("charSelect").value;
+      renderCharacter();
+    }
+
+    // Afficher les données du personnage sélectionné à l'écran
+    function renderCharacter() {
+      const char = currentStats[selectedChar];
+      document.getElementById("characterClass").innerText = char.class;
+
+      const container = document.getElementById("statsContainer");
+      container.innerHTML = ""; // On vide
+
+      for (const [key, label] of Object.entries(statLabels)) {
+        if (label === "hr") {
+          const hr = document.createElement("hr");
+          hr.style.gridColumn = "span 2";
+          hr.style.width = "100%";
+          container.appendChild(hr);
+          continue;
+        }
+
+        const labelEl = document.createElement("label");
+        labelEl.innerText = label;
+
+        const inputEl = document.createElement("input");
+        inputEl.type = "number";
+        inputEl.value = char[key];
+        // Événement quand on change le chiffre
+        inputEl.onchange = (e) => updateStat(key, parseInt(e.target.value, 10));
+
+        container.appendChild(labelEl);
+        container.appendChild(inputEl);
+      }
+    }
+
+    // Mettre à jour la statistique localement ET en ligne pour tout le monde
+    async function updateStat(statKey, newValue) {
+      if (isNaN(newValue)) return;
+      
+      // Mise à jour locale immédiate
+      currentStats[selectedChar][statKey] = newValue;
+
+      // Envoi de la mise à jour à Owlbear Rodeo (synchro en ligne)
+      await OBR.room.setMetadata({
+        [EXTENSION_ID]: currentStats
+      });
+    }
+  </script>
+</body>
+</html>
