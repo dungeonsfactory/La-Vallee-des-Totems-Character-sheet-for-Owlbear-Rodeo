@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Fiches de Personnage - La Vallée des Totems</title>
-  <!-- Chargement du SDK Owlbear Rodeo -->
-  <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk/dist/umd/index.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -147,7 +146,6 @@
 
   <h2>Fiche de Personnage</h2>
   
-  <!-- Zone du Bandeau Portrait -->
   <div class="banner-container">
     <img id="charBanner" src="" alt="Portrait" class="banner-img" />
   </div>
@@ -162,11 +160,9 @@
   <div id="characterClass" class="classe">-</div>
 
   <div class="grid" id="statsContainer">
-    <!-- Rempli dynamiquement -->
-  </div>
+    </div>
 
   <script>
-    // Ajout d'un ID de version pour forcer Owlbear à nettoyer l'ancien cache de stockage corrompu
     const EXTENSION_ID = "com.monextension.fiches_simples_v2";
     const DICE_PLUS_ID = "com.missinglinkdev.diceplus";
 
@@ -208,26 +204,28 @@
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
 
-    // Sécurité cruciale : On attend le chargement complet de la page et des scripts CDN
     window.onload = function() {
-      if (typeof OBR === "undefined") {
-        console.error("Le SDK Owlbear Rodeo n'a pas pu être chargé. Re-tentative...");
+      // Dans la version UMD, OBR est directement injecté dans la fenêtre globale (window)
+      const obrApi = window.OBR || (window.unbxd && window.unbxd.OBR);
+      
+      if (!obrApi) {
+        console.error("Le SDK Owlbear Rodeo n'est pas accessible.");
         return;
       }
 
-      OBR.onReady(async () => {
-        OBR.room.onMetadataChange((metadata) => {
+      obrApi.onReady(async () => {
+        obrApi.room.onMetadataChange((metadata) => {
           if (metadata[EXTENSION_ID]) {
             mergeMetadata(metadata[EXTENSION_ID]);
             renderCharacter();
           }
         });
 
-        const metadata = await OBR.room.getMetadata();
+        const metadata = await obrApi.room.getMetadata();
         if (metadata[EXTENSION_ID]) {
           mergeMetadata(metadata[EXTENSION_ID]);
         } else {
-          await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+          await obrApi.room.setMetadata({ [EXTENSION_ID]: currentStats });
         }
         renderCharacter();
       });
@@ -363,29 +361,36 @@
     }
 
     async function updateStat(statKey, newValue) {
+      const obrApi = window.OBR || (window.unbxd && window.unbxd.OBR);
       currentStats[selectedChar][statKey] = newValue;
-      await OBR.room.setMetadata({
-        [EXTENSION_ID]: currentStats
-      });
+      if(obrApi && obrApi.room) {
+        await obrApi.room.setMetadata({
+          [EXTENSION_ID]: currentStats
+        });
+      }
     }
 
     async function rollInitiative(bonus) {
+      const obrApi = window.OBR || (window.unbxd && window.unbxd.OBR);
       const d12Result = Math.floor(Math.random() * 12) + 1;
       const totalInit = d12Result + bonus;
 
       currentStats[selectedChar].initTour = totalInit;
-      await OBR.room.setMetadata({
-        [EXTENSION_ID]: currentStats
-      });
-      renderCharacter();
-
-      try {
-        await OBR.messaging.sendMessage(DICE_PLUS_ID, {
-          roll: `1d12${bonus >= 0 ? '+' : ''}${bonus}`,
-          whisper: false
+      
+      if(obrApi && obrApi.room) {
+        await obrApi.room.setMetadata({
+          [EXTENSION_ID]: currentStats
         });
-      } catch (error) {
-        console.log("Dice+ non détecté ou inactif.");
+        renderCharacter();
+
+        try {
+          await obrApi.messaging.sendMessage(DICE_PLUS_ID, {
+            roll: `1d12${bonus >= 0 ? '+' : ''}${bonus}`,
+            whisper: false
+          });
+        } catch (error) {
+          console.log("Dice+ non détecté ou inactif.");
+        }
       }
     }
   </script>
