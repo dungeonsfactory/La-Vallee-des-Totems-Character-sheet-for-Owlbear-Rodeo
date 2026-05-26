@@ -4,9 +4,9 @@
   "manifest_version": 1,
   "icon": "df_logo.png",
   "action": {
-    "title": "Fiche d'Aventure",
+    "title": "Fiches Perso",
     "icon": "df_logo.png",
-    "popover": "index.html",
+    "popover": "https://dungeonsfactory.github.io/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/index.html",
     "height": 700,
     "width": 400
   }
