@@ -28,7 +28,7 @@
     .banner-img {
       width: 100%;
       height: 100%;
-      object-fit: cover; /* Aligne et recadre proprement l'image sans la déformer */
+      object-fit: cover;
       display: block;
     }
 
@@ -87,21 +87,43 @@
     }
 
     /* --- CODE COULEUR ÉLÉMENTAIRE --- */
-    /* Feu = Rouge */
     .color-fire { color: #ff4d4d !important; }
     .bg-fire { background: #8b0000 !important; border: 1px solid #ff4d4d; }
 
-    /* Eau = Vert */
     .color-water { color: #2ecc71 !important; }
     .bg-water { background: #1b4d3e !important; border: 1px solid #2ecc71; }
 
-    /* Air = Bleu */
     .color-air { color: #3498db !important; }
     .bg-air { background: #1a365d !important; border: 1px solid #3498db; }
 
-    /* Terre = Jaune/Orange */
     .color-earth { color: #f39c12 !important; }
     .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
+
+    /* Nouveau style pour le bouton de dés */
+    .btn-dice {
+      background: #ffaa00;
+      color: #1a1a1a;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-dice:hover {
+      background: #ffc44d;
+    }
+
+    .init-tour-box {
+      background: #333;
+      color: #ffaa00;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-align: center;
+      border: 1px dashed #ffaa00;
+      min-width: 35px;
+    }
 
     input[type="number"] {
       width: 60px;
@@ -124,7 +146,6 @@
 
   <h2>Fiche de Personnage</h2>
   
-  <!-- Zone du Bandeau Portrait -->
   <div class="banner-container">
     <img id="charBanner" src="" alt="Portrait" class="banner-img" />
   </div>
@@ -139,20 +160,19 @@
   <div id="characterClass" class="classe">-</div>
 
   <div class="grid" id="statsContainer">
-    <!-- Rempli dynamiquement -->
-  </div>
+    </div>
 
   <script>
     const EXTENSION_ID = "com.monextension.fiches_simples";
+    const DICE_PLUS_ID = "com.missinglinkdev.diceplus"; // ID de Dice+ pour la communication
 
     const aspectTable = {
-      "D12": "+6",
-      "D10": "+1",
-      "D8": "0",
-      "D6": "-1"
+      "D12": 6,
+      "D10": 1,
+      "D8": 0,
+      "D6": -1
     };
 
-    // Ajout de la propriété "image" pour chaque personnage (on cible la racine github)
     const characterTemplates = {
       mayak: { class: "Chasseresse", image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10" },
       bawak: { class: "Guérisseur", image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8" },
@@ -161,10 +181,10 @@
     };
 
     const defaultDynamicStats = {
-      mayak: { res: 22, choc: 16, lien: 14, essence: 18 },
-      bawak: { res: 18, choc: 20, lien: 21, essence: 18 },
-      cylak: { res: 15, choc: 18, lien: 18, essence: 24 },
-      borak: { res: 24, choc: 20, lien: 15, essence: 14 }
+      mayak: { res: 22, choc: 16, lien: 14, essence: 18, initTour: "-" },
+      bawak: { res: 18, choc: 20, lien: 21, essence: 18, initTour: "-" },
+      cylak: { res: 15, choc: 18, lien: 18, essence: 24, initTour: "-" },
+      borak: { res: 24, choc: 20, lien: 15, essence: 14, initTour: "-" }
     };
 
     const totemsConfig = {
@@ -187,19 +207,33 @@
     OBR.onReady(async () => {
       OBR.room.onMetadataChange((metadata) => {
         if (metadata[EXTENSION_ID]) {
-          currentStats = metadata[EXTENSION_ID];
+          mergeMetadata(metadata[EXTENSION_ID]);
           renderCharacter();
         }
       });
 
       const metadata = await OBR.room.getMetadata();
       if (metadata[EXTENSION_ID]) {
-        currentStats = metadata[EXTENSION_ID];
+        mergeMetadata(metadata[EXTENSION_ID]);
       } else {
         await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
       }
       renderCharacter();
     });
+
+    // Fonction de sécurité pour fusionner les données existantes sans écraser les nouvelles variables (comme initTour)
+    function mergeMetadata(incoming) {
+      for (const charKey in defaultDynamicStats) {
+        if (!currentStats[charKey]) currentStats[charKey] = {};
+        for (const statKey in defaultDynamicStats[charKey]) {
+          if (incoming[charKey] && incoming[charKey][statKey] !== undefined) {
+            currentStats[charKey][statKey] = incoming[charKey][statKey];
+          } else {
+            currentStats[charKey][statKey] = defaultDynamicStats[charKey][statKey];
+          }
+        }
+      }
+    }
 
     function changeCharacter() {
       selectedChar = document.getElementById("charSelect").value;
@@ -210,31 +244,30 @@
       const template = characterTemplates[selectedChar];
       const dynamic = currentStats[selectedChar];
       
-      // Mise à jour de l'image de la bannière
       document.getElementById("charBanner").src = template.image;
       document.getElementById("characterClass").innerText = template.class;
 
       const container = document.getElementById("statsContainer");
       container.innerHTML = ""; 
 
-      // En-têtes
+      // --- SECTION 1 : EN-TÊTES ET TOTEMS ---
       const hLabel = document.createElement("div"); hLabel.className = "grid-header left"; hLabel.innerText = "Totem";
       const hDede = document.createElement("div"); hDede.className = "grid-header"; hDede.innerText = "Dé";
       const hAspect = document.createElement("div"); hAspect.className = "grid-header"; hAspect.innerText = "Aspect";
       container.appendChild(hLabel); container.appendChild(hDede); container.appendChild(hAspect);
 
-      // Section Totems
       for (const [key, label] of Object.entries(totemsConfig)) {
         const labelEl = document.createElement("label");
         labelEl.innerText = label;
 
         const diceEl = document.createElement("div");
-        diceEl.className = `dice-val color-${key}`; // Applique la couleur au texte du Dé
+        diceEl.className = `dice-val color-${key}`;
         diceEl.innerText = template[key];
 
         const aspectEl = document.createElement("div");
-        aspectEl.className = `aspect-val bg-day bg-sans-badge bg-${key}`; // Applique la couleur de fond à l'Aspect
-        aspectEl.innerText = aspectTable[template[key]];
+        aspectEl.className = `aspect-val bg-${key}`;
+        const valSigne = aspectTable[template[key]] >= 0 ? `+${aspectTable[template[key]]}` : aspectTable[template[key]];
+        aspectEl.innerText = valSigne;
 
         container.appendChild(labelEl);
         container.appendChild(diceEl);
@@ -242,10 +275,67 @@
       }
 
       // Séparateur
-      const hr = document.createElement("hr");
-      container.appendChild(hr);
+      container.appendChild(document.createElement("hr"));
 
-      // Section Valeurs Secondaires
+      // --- SECTION 2 : NOUVEAU BLOC DYNAMIQUE (Init, Mouvement, Manœuvre) ---
+      const fireDiceStr = template.fire; // Ex: "D12"
+      const fireDiceNum = parseInt(fireDiceStr.replace("D", ""), 10); // Ex: 12
+      const fireAspectVal = aspectTable[fireDiceStr]; // Ex: 6
+      const mouvementCalcul() { return Math.floor(fireDiceNum / 2); } // Ex: 12 / 2 = 6
+
+      // Ligne Initiative de base
+      const initLabel = document.createElement("label");
+      initLabel.innerText = "Initiative (Base)";
+      const initBonusEl = document.createElement("div");
+      initBonusEl.style.gridColumn = "span 2";
+      initBonusEl.style.textAlign = "right";
+      initBonusEl.style.fontStyle = "italic";
+      initBonusEl.style.color = "#aaa";
+      initBonusEl.innerText = `1d12 + (${fireAspectVal >= 0 ? '+' : ''}${fireAspectVal})`;
+      container.appendChild(initLabel);
+      container.appendChild(initBonusEl);
+
+      // Ligne Bouton Lancer Initiative -> Nouveau champ "Initiative pour le tour"
+      const initTourLabel = document.createElement("label");
+      initTourLabel.innerText = "Initiative du Tour";
+      
+      const btnInit = document.createElement("button");
+      btnInit.className = "btn-dice";
+      btnInit.innerText = "🎲 Lancer";
+      btnInit.onclick = () => rollInitiative(fireAspectVal);
+
+      const initTourVal = document.createElement("div");
+      initTourVal.className = "init-tour-box";
+      initTourVal.innerText = dynamic.initTour;
+
+      container.appendChild(initTourLabel);
+      container.appendChild(btnInit);
+      container.appendChild(initTourVal);
+
+      // Ligne Mouvement
+      const movLabel = document.createElement("label");
+      movLabel.innerText = "Mouvement";
+      const movVal = document.createElement("div");
+      movVal.className = "dice-val";
+      movVal.style.gridColumn = "span 2";
+      movVal.innerText = `${mouvementCalcul()} cases`;
+      container.appendChild(movLabel);
+      container.appendChild(movVal);
+
+      // Ligne Manœuvre
+      const manLabel = document.createElement("label");
+      manLabel.innerText = "Manœuvre";
+      const manVal = document.createElement("div");
+      manVal.className = "dice-val";
+      manVal.style.gridColumn = "span 2";
+      manVal.innerText = "4 Pts";
+      container.appendChild(manLabel);
+      container.appendChild(manVal);
+
+      // Séparateur
+      container.appendChild(document.createElement("hr"));
+
+      // --- SECTION 3 : VALEURS SECONDAIRES ---
       for (const [key, label] of Object.entries(secondaryConfig)) {
         const labelEl = document.createElement("label");
         labelEl.innerText = label;
@@ -266,6 +356,30 @@
       await OBR.room.setMetadata({
         [EXTENSION_ID]: currentStats
       });
+    }
+
+    // Fonction de lancer d'initiative couplée avec Dice+
+    async function rollInitiative(bonus) {
+      // 1. Calcul local du dé
+      const d12Result = Math.floor(Math.random() * 12) + 1;
+      const totalInit = d12Result + bonus;
+
+      // 2. Sauvegarde dans la fiche de personnage
+      currentStats[selectedChar].initTour = totalInit;
+      await OBR.room.setMetadata({
+        [EXTENSION_ID]: currentStats
+      });
+      renderCharacter();
+
+      // 3. Envoi de l'ordre de lancer de dé à l'extension DICE+ via l'API OBR
+      try {
+        await OBR.messaging.sendMessage(DICE_PLUS_ID, {
+          roll: `1d12${bonus >= 0 ? '+' : ''}${bonus}`,
+          whisper: false // Passe à true si tu veux que seul le MJ et le joueur voient le jet
+        });
+      } catch (error) {
+        console.log("Dice+ n'est pas activé ou installé dans cette room, le jet en 3D n'a pas pu être envoyé.");
+      }
     }
   </script>
 </body>
