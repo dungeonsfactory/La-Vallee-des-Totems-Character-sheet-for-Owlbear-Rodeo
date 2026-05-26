@@ -162,8 +162,8 @@
   <div class="grid" id="statsContainer"></div>
 
   <script>
-    // Identifiant unique v5 pour vider le cache d'Owlbear Rodeo
-    const EXTENSION_ID = "com.monextension.fiches_simples_v5";
+    // Passage à la v7 pour appliquer le format de dés Dice+
+    const EXTENSION_ID = "com.monextension.fiches_simples_v7";
     const DICE_PLUS_ID = "com.missinglinkdev.diceplus";
 
     const aspectTable = {
@@ -205,23 +205,17 @@
     let selectedChar = "mayak";
     let isObrReady = false;
 
-    // Gestion de l'initialisation de la page
     window.onload = function() {
-      // 1. On dessine la fiche immédiatement avec les données locales (évite la fenêtre vide)
       renderCharacter();
 
-      // 2. Vérification de la présence globale du SDK
       if (typeof OBR === "undefined") {
-        console.warn("Le SDK OBR global est introuvable. Mode déconnecté activé.");
+        console.warn("Le SDK OBR global est introuvable. Mode déconnecté.");
         return;
       }
 
-      // 3. Attente sécurisée du signal d'Owlbear Rodeo
       OBR.onReady(async () => {
         isObrReady = true;
-        console.log("SDK Owlbear Rodeo initialisé avec succès.");
 
-        // Écouteur des changements faits par les autres joueurs sur la table
         OBR.room.onMetadataChange((metadata) => {
           if (metadata[EXTENSION_ID]) {
             mergeMetadata(metadata[EXTENSION_ID]);
@@ -229,7 +223,6 @@
           }
         });
 
-        // Récupération initiale de la base de données de la room
         const metadata = await OBR.room.getMetadata();
         if (metadata[EXTENSION_ID]) {
           mergeMetadata(metadata[EXTENSION_ID]);
@@ -370,6 +363,7 @@
     }
 
     async function rollInitiative(bonus) {
+      // 1. Calcul mathématique local pour la case de la fiche
       const d12Result = Math.floor(Math.random() * 12) + 1;
       const totalInit = d12Result + bonus;
 
@@ -377,20 +371,37 @@
       renderCharacter();
 
       if(isObrReady && OBR.room) {
+        // Enregistrement des données de la room pour les autres joueurs
         await OBR.room.setMetadata({
           [EXTENSION_ID]: currentStats
         });
 
+        const charName = selectedChar.charAt(0).toUpperCase() + selectedChar.slice(1);
+        
+        // Construction de la chaîne de dé conforme à la syntaxe Dice+ (ex: "1d12+6" ou "1d12-1")
+        const diceNotation = `1d12${bonus >= 0 ? '+' : ''}${bonus}`;
+
+        // 2. Notification textuelle générale d'Owlbear Rodeo
+        try {
+          const playerName = await OBR.player.getName();
+          await OBR.notification.show(
+            `🎲 ${playerName} (${charName}) : Initiative ${totalInit} (Jet: ${d12Result} via ${diceNotation})`,
+            "SUCCESS"
+          );
+        } catch (e) {
+          console.log("Échec notification");
+        }
+
+        // 3. Envoi du message standardisé à Dice+ pour lancer les dés physiques en 3D
         try {
           await OBR.messaging.sendMessage(DICE_PLUS_ID, {
-            roll: `1d12${bonus >= 0 ? '+' : ''}${bonus}`,
+            roll: diceNotation,
             whisper: false
           });
+          console.log("Commande envoyée à Dice+ :", diceNotation);
         } catch (error) {
-          console.log("Extension Dice+ absente ou non utilisable dans cette room.");
+          console.log("L'extension Dice+ n'a pas intercepté le message.");
         }
-      } else {
-        console.log("Lancement effectué hors ligne (Mode local) :", totalInit);
       }
     }
   </script>
