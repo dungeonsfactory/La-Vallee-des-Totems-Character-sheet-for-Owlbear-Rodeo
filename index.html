@@ -13,6 +13,25 @@
       padding: 15px;
     }
     h2 { margin-top: 0; color: #ffaa00; text-align: center; }
+    
+    /* Style du Bandeau Portrait */
+    .banner-container {
+      width: 100%;
+      height: 100px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      background: #2a2a2a;
+      border: 1px solid #333;
+    }
+    .banner-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* Aligne et recadre proprement l'image sans la déformer */
+      display: block;
+    }
+
     select.char-select {
       width: 100%;
       padding: 10px;
@@ -20,7 +39,7 @@
       color: #fff;
       border: 1px solid #444;
       border-radius: 4px;
-      margin-bottom: 15px;
+      margin-bottom: 5px;
       font-size: 16px;
     }
     .classe {
@@ -28,6 +47,7 @@
       font-style: italic;
       color: #aaa;
       margin-bottom: 15px;
+      font-size: 14px;
     }
     .grid {
       display: grid;
@@ -46,7 +66,7 @@
     .grid-header.left { text-align: left; }
     label { font-weight: bold; }
     
-    /* Styles de base pour les dés et aspects */
+    /* Styles pour les dés et aspects fixes */
     .dice-val {
       font-family: monospace;
       font-weight: bold;
@@ -68,21 +88,20 @@
 
     /* --- CODE COULEUR ÉLÉMENTAIRE --- */
     /* Feu = Rouge */
-    .totem-fire .dice-val { color: #ff4d4d; }
-    .totem-fire .aspect-val { background: #8b0000; border: 1px solid #ff4d4d; }
+    .color-fire { color: #ff4d4d !important; }
+    .bg-fire { background: #8b0000 !important; border: 1px solid #ff4d4d; }
 
     /* Eau = Vert */
-    .totem-water .dice-val { color: #2ecc71; }
-    .totem-water .aspect-val { background: #1b4d3e; border: 1px solid #2ecc71; }
+    .color-water { color: #2ecc71 !important; }
+    .bg-water { background: #1b4d3e !important; border: 1px solid #2ecc71; }
 
     /* Air = Bleu */
-    .totem-air .dice-val { color: #3498db; }
-    .totem-air .aspect-val { background: #1a365d; border: 1px solid #3498db; }
+    .color-air { color: #3498db !important; }
+    .bg-air { background: #1a365d !important; border: 1px solid #3498db; }
 
-    /* Terre = Jaune / Orange */
-    .totem-earth .dice-val { color: #f39c12; }
-    .totem-earth .aspect-val { background: #7e4a00; border: 1px solid #f39c12; }
-
+    /* Terre = Jaune/Orange */
+    .color-earth { color: #f39c12 !important; }
+    .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
 
     input[type="number"] {
       width: 60px;
@@ -104,6 +123,11 @@
 <body>
 
   <h2>Fiches de Personnage</h2>
+  
+  <!-- Zone du Bandeau Portrait -->
+  <div class="banner-container">
+    <img id="charBanner" src="" alt="Portrait" class="banner-img" />
+  </div>
   
   <select id="charSelect" class="char-select" onchange="changeCharacter()">
     <option value="mayak">Mayak</option>
@@ -128,11 +152,12 @@
       "D6": "-1"
     };
 
+    // Ajout de la propriété "image" pour chaque personnage (on cible la racine github)
     const characterTemplates = {
-      mayak: { class: "Chasseresse", fire: "D12", water: "D6", air: "D8", earth: "D10" },
-      bawak: { class: "Guérisseur", fire: "D6", water: "D12", air: "D10", earth: "D8" },
-      cylak: { class: "Sorçière", fire: "D10", water: "D8", air: "D12", earth: "D6" },
-      borak: { class: "Protecteur", fire: "D10", water: "D8", air: "D6", earth: "D12" }
+      mayak: { class: "Chasseresse", image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10" },
+      bawak: { class: "Guérisseur", image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8" },
+      cylak: { class: "Sorçière", image: "cylak.png", fire: "D10", water: "D8", air: "D12", earth: "D6" },
+      borak: { class: "Protecteur", image: "borak.png", fire: "D10", water: "D8", air: "D6", earth: "D12" }
     };
 
     const defaultDynamicStats = {
@@ -185,6 +210,8 @@
       const template = characterTemplates[selectedChar];
       const dynamic = currentStats[selectedChar];
       
+      // Mise à jour de l'image de la bannière
+      document.getElementById("charBanner").src = template.image;
       document.getElementById("characterClass").innerText = template.class;
 
       const container = document.getElementById("statsContainer");
@@ -196,24 +223,18 @@
       const hAspect = document.createElement("div"); hAspect.className = "grid-header"; hAspect.innerText = "Aspect";
       container.appendChild(hLabel); container.appendChild(hDede); container.appendChild(hAspect);
 
-      // Génération de la section Totems avec classes CSS dynamiques pour les couleurs
+      // Section Totems
       for (const [key, label] of Object.entries(totemsConfig)) {
-        
         const labelEl = document.createElement("label");
         labelEl.innerText = label;
 
         const diceEl = document.createElement("div");
-        diceEl.className = "dice-val";
+        diceEl.className = `dice-val color-${key}`; // Applique la couleur au texte du Dé
         diceEl.innerText = template[key];
 
         const aspectEl = document.createElement("div");
-        aspectEl.className = "aspect-val";
+        aspectEl.className = `aspect-val bg-day bg-sans-badge bg-${key}`; // Applique la couleur de fond à l'Aspect
         aspectEl.innerText = aspectTable[template[key]];
-
-        // On applique le conteneur coloré en fonction de l'élément (ex: totem-fire)
-        labelEl.className = `totem-${key}`;
-        diceEl.className = `dice-val totem-${key}`;
-        aspectEl.className = `aspect-val totem-${key}`;
 
         container.appendChild(labelEl);
         container.appendChild(diceEl);
@@ -224,7 +245,7 @@
       const hr = document.createElement("hr");
       container.appendChild(hr);
 
-      // Génération de la section Valeurs Secondaires
+      // Section Valeurs Secondaires
       for (const [key, label] of Object.entries(secondaryConfig)) {
         const labelEl = document.createElement("label");
         labelEl.innerText = label;
