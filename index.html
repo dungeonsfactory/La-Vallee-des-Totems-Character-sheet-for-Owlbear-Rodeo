@@ -162,8 +162,8 @@
   <div class="grid" id="statsContainer"></div>
 
   <script>
-    // Passage à la v7 pour appliquer le format de dés Dice+
-    const EXTENSION_ID = "com.monextension.fiches_simples_v7";
+    // Version v8 implémentant l'API OBR.broadcast pour Dice+
+    const EXTENSION_ID = "com.monextension.fiches_simples_v8";
     const DICE_PLUS_ID = "com.missinglinkdev.diceplus";
 
     const aspectTable = {
@@ -215,6 +215,15 @@
 
       OBR.onReady(async () => {
         isObrReady = true;
+
+        // Écouteur pour intercepter les erreurs de lancer envoyées par Dice+
+        try {
+          OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-error`, (event) => {
+            console.error("Dice+ n'a pas pu exécuter le jet :", event.data);
+          });
+        } catch (e) {
+          console.log("Impossible de lier le canal d'erreur de diffusion.");
+        }
 
         OBR.room.onMetadataChange((metadata) => {
           if (metadata[EXTENSION_ID]) {
@@ -363,7 +372,7 @@
     }
 
     async function rollInitiative(bonus) {
-      // 1. Calcul mathématique local pour la case de la fiche
+      // 1. Calcul mathématique local (pour mettre à jour la case immédiatement)
       const d12Result = Math.floor(Math.random() * 12) + 1;
       const totalInit = d12Result + bonus;
 
@@ -371,36 +380,43 @@
       renderCharacter();
 
       if(isObrReady && OBR.room) {
-        // Enregistrement des données de la room pour les autres joueurs
+        // Sauvegarde de l'état dans la room pour synchroniser les joueurs
         await OBR.room.setMetadata({
           [EXTENSION_ID]: currentStats
         });
 
         const charName = selectedChar.charAt(0).toUpperCase() + selectedChar.slice(1);
-        
-        // Construction de la chaîne de dé conforme à la syntaxe Dice+ (ex: "1d12+6" ou "1d12-1")
         const diceNotation = `1d12${bonus >= 0 ? '+' : ''}${bonus}`;
 
         // 2. Notification textuelle générale d'Owlbear Rodeo
         try {
           const playerName = await OBR.player.getName();
           await OBR.notification.show(
-            `🎲 ${playerName} (${charName}) : Initiative ${totalInit} (Jet: ${d12Result} via ${diceNotation})`,
+            `🎲 ${playerName} (${charName}) : Initiative ${totalInit} (Jet: ${d12Result} avec ${diceNotation})`,
             "SUCCESS"
           );
         } catch (e) {
-          console.log("Échec notification");
+          console.log("Échec de la notification standard.");
         }
 
-        // 3. Envoi du message standardisé à Dice+ pour lancer les dés physiques en 3D
+        // 3. Envoi via OBR.broadcast conformément à la nouvelle documentation Dice+
         try {
-          await OBR.messaging.sendMessage(DICE_PLUS_ID, {
-            roll: diceNotation,
-            whisper: false
-          });
-          console.log("Commande envoyée à Dice+ :", diceNotation);
+          const uniqueRollId = `roll_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+          
+          const rollRequestPayload = {
+            rollId: uniqueRollId,
+            notation: diceNotation,
+            rollTarget: "everyone",
+            source: EXTENSION_ID // Permet à Dice+ de savoir à qui répondre en cas d'échec
+          };
+
+          await OBR.broadcast.sendMessage(
+            `${DICE_PLUS_ID}/roll-request`, 
+            rollRequestPayload
+          );
+          console.log("Message de diffusion envoyé avec succès à Dice+ :", rollRequestPayload);
         } catch (error) {
-          console.log("L'extension Dice+ n'a pas intercepté le message.");
+          console.log("Erreur lors de la diffusion du message vers Dice+ :", error);
         }
       }
     }
