@@ -1,108 +1,446 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://raw.githubusercontent.com; img-src 'self' data: https://raw.githubusercontent.com;">
   <meta charset="UTF-8">
   <title>Fiches de Personnage - La Vallée des Totems</title>
   <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk"></script>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #1a1a1a; color: #e0e0e0; margin: 0; padding: 15px; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 15px;
+    }
     h2 { margin-top: 0; color: #ffaa00; text-align: center; margin-bottom: 5px; }
-    .io-panel { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; background: #222; padding: 8px; border-radius: 6px; border: 1px solid #333; }
-    .btn-io { background: #444; color: #fff; border: 1px solid #555; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+    
+    /* Zone Import/Export style Embers */
+    .io-panel {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      background: #222;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #333;
+    }
+    .btn-io {
+      background: #444;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .btn-io:hover { background: #555; border-color: #ffaa00; }
     #fileInput { display: none; }
-    .banner-container { width: 100%; height: 100px; margin-bottom: 15px; border-radius: 6px; overflow: hidden; background: #2a2a2a; border: 1px solid #333; }
-    .banner-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    select.char-select { width: 100%; padding: 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; margin-bottom: 5px; font-size: 16px; }
-    .classe { text-align: center; font-style: italic; color: #aaa; margin-bottom: 5px; }
-    .profil-box { display: flex; justify-content: space-around; background: #222; padding: 8px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #333; font-size: 12px; }
-    .profil-item { text-align: center; } .profil-item span { display: block; color: #ffaa00; font-weight: bold; font-size: 14px; }
-    .grid { display: grid; grid-template-columns: 1fr auto auto; gap: 12px 15px; align-items: center; }
-    .grid-header { font-size: 11px; text-transform: uppercase; color: #777; font-weight: bold; text-align: center; }
-    .dice-val { font-family: monospace; font-weight: bold; background: #222; padding: 4px 8px; border-radius: 4px; text-align: center; }
-    .aspect-val { font-weight: bold; color: #ffffff; padding: 4px 8px; border-radius: 4px; text-align: center; }
-    .color-fire { color: #ff4d4d; } .bg-fire { background: #8b0000; border: 1px solid #ff4d4d; }
-    .color-water { color: #2ecc71; } .bg-water { background: #1b4d3e; border: 1px solid #2ecc71; }
-    .color-air { color: #3498db; } .bg-air { background: #1a365d; border: 1px solid #3498db; }
-    .color-earth { color: #f39c12; } .bg-earth { background: #7e4a00; border: 1px solid #f39c12; }
-    input[type="number"] { width: 60px; padding: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; text-align: center; }
+
+    /* Style du Bandeau Portrait */
+    .banner-container {
+      width: 100%;
+      height: 100px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      background: #2a2a2a;
+      border: 1px solid #333;
+    }
+    .banner-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    select.char-select {
+      width: 100%;
+      padding: 10px;
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      margin-bottom: 5px;
+      font-size: 16px;
+    }
+    .classe {
+      text-align: center;
+      font-style: italic;
+      color: #aaa;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    /* Section Profil (Âge, Taille, Poids, Encombrement) */
+    .profil-box {
+      display: flex;
+      justify-content: space-around;
+      background: #222;
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      border: 1px solid #333;
+      font-size: 12px;
+      gap: 5px;
+    }
+    .profil-item { text-align: center; flex: 1; }
+    .profil-item span { display: block; color: #ffaa00; font-weight: bold; font-size: 14px; margin-top: 2px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px 15px;
+      align-items: center;
+    }
+    .grid-header {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #777;
+      font-weight: bold;
+      margin-bottom: -5px;
+      text-align: center;
+    }
+    .grid-header.left { text-align: left; }
+    label { font-weight: bold; }
+    
+    /* Styles pour les dés et aspects fixes */
+    .dice-val {
+      font-family: monospace;
+      font-weight: bold;
+      background: #222;
+      padding: 4px 8px;
+      border-radius: 4px;
+      min-width: 35px;
+      text-align: center;
+    }
+    .aspect-val {
+      font-weight: bold;
+      color: #ffffff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      min-width: 35px;
+      text-align: center;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+
+    /* --- CODE COULEUR ÉLÉMENTAIRE --- */
+    .color-fire { color: #ff4d4d !important; }
+    .bg-fire { background: #8b0000 !important; border: 1px solid #ff4d4d; }
+
+    .color-water { color: #2ecc71 !important; }
+    .bg-water { background: #1b4d3e !important; border: 1px solid #2ecc71; }
+
+    .color-air { color: #3498db !important; }
+    .bg-air { background: #1a365d !important; border: 1px solid #3498db; }
+
+    .color-earth { color: #f39c12 !important; }
+    .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
+
+    input[type="number"] {
+      width: 60px;
+      padding: 5px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 4px;
+      text-align: center;
+      font-size: 15px;
+    }
+    input[type="number"]:focus { border-color: #ffaa00; outline: none; }
     hr { border: 0; border-top: 1px solid #444; margin: 15px 0; grid-column: span 3; }
   </style>
 </head>
 <body>
+
   <h2>Fiche de Personnage</h2>
+
   <div class="io-panel">
-    <button class="btn-io" onclick="exportCampaignText()">💾 Sauvegarder</button>
-    <button class="btn-io" onclick="document.getElementById('fileInput').click()">📂 Charger</button>
+    <button class="btn-io" onclick="exportCampaignText()">💾 Sauvegarder Campagne</button>
+    <button class="btn-io" onclick="document.getElementById('fileInput').click()">📂 Charger Fichier</button>
     <input type="file" id="fileInput" accept=".json" onchange="importCampaignText(event)">
   </div>
-  <div class="banner-container"><img id="charBanner" src="" class="banner-img" /></div>
+  
+  <div class="banner-container">
+    <img id="charBanner" src="" alt="Portrait" class="banner-img" />
+  </div>
+  
   <select id="charSelect" class="char-select" onchange="changeCharacter()">
-    <option value="mayak">Mayak</option><option value="bawak">Bawak</option><option value="cylak">Cylak</option><option value="borak">Borak</option>
+    <option value="mayak">Mayak</option>
+    <option value="bawak">Bawak</option>
+    <option value="cylak">Cylak</option>
+    <option value="borak">Borak</option>
   </select>
+
   <div id="characterClass" class="classe">-</div>
+
   <div class="profil-box">
     <div class="profil-item">Âge<span id="p-age">-</span></div>
     <div class="profil-item">Taille<span id="p-taille">-</span></div>
     <div class="profil-item">Poids<span id="p-poids">-</span></div>
     <div class="profil-item">Encombrement<span id="p-enc">-</span></div>
   </div>
+
   <div class="grid" id="statsContainer"></div>
 
   <script>
     const EXTENSION_ID = "com.monextension.fiches_simples";
-    const aspectTable = { "D12": 6, "D10": 1, "D8": 0, "D6": -1 };
+
+    const aspectTable = {
+      "D12": 6,
+      "D10": 1,
+      "D8": 0,
+      "D6": -1
+    };
+
     const characterTemplates = {
-      mayak: { class: "Chasseresse", image: "mayak.png", feu: "D12", eau: "D6", air: "D8", terre: "D10" },
-      bawak: { class: "Guérisseur", image: "bawak.png", feu: "D6", eau: "D12", air: "D10", terre: "D8" },
-      cylak: { class: "Sorçière", image: "cylak.png", feu: "D10", eau: "D8", air: "D12", terre: "D6" },
-      borak: { class: "Protecteur", image: "borak.png", feu: "D10", eau: "D8", air: "D6", terre: "D12" }
+      mayak: { class: "Chasseresse", image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10" },
+      bawak: { class: "Guérisseur", image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8" },
+      cylak: { class: "Sorçière", image: "cylak.png", fire: "D10", water: "D8", air: "D12", earth: "D6" },
+      borak: { class: "Protecteur", image: "borak.png", fire: "D10", water: "D8", air: "D6", earth: "D12" }
     };
+
     const defaultDynamicStats = {
-      mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 21, taille: 180, poids: 80 },
-      bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 27, taille: 140, poids: 75 },
-      cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 20, taille: 150, poids: 68 },
-      borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 27, taille: 187, poids: 92 }
+      mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0 },
+      bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0 },
+      cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0 },
+      borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0 }
     };
+
+    const totemsConfig = {
+      fire: "Totem de Feu",
+      water: "Totem d'Eau",
+      air: "Totem d'Air",
+      earth: "Totem de Terre"
+    };
+
+    const secondaryConfig = {
+      res: "Valeur de Résistance",
+      choc: "Valeur de Choc",
+      lien: "Valeur de Lien",
+      essence: "Valeur d'Essence"
+    };
+
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
 
-    // Chargement automatique au démarrage
-    OBR.onReady(async () => {
-      const metadata = await OBR.room.getMetadata();
-      if (metadata[EXTENSION_ID]) currentStats = metadata[EXTENSION_ID];
+    // Chargement immédiat des visuels au démarrage de l'iframe
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("charSelect").value = "mayak";
+      selectedChar = "mayak";
       renderCharacter();
     });
 
-    function changeCharacter() { selectedChar = document.getElementById("charSelect").value; renderCharacter(); }
-
-    function renderCharacter() {
-      const t = characterTemplates[selectedChar];
-      const d = currentStats[selectedChar];
-      document.getElementById("charBanner").src = t.image;
-      document.getElementById("characterClass").innerText = t.class;
-      document.getElementById("p-age").innerText = d.age + " ans";
-      document.getElementById("p-taille").innerText = d.taille + " cm";
-      document.getElementById("p-poids").innerText = d.poids + " kg";
-      document.getElementById("p-enc").innerText = Math.floor((d.poids + d.taille) / 20) + " Utés";
-      
-      const cont = document.getElementById("statsContainer");
-      cont.innerHTML = '<div class="grid-header left">Totem</div><div class="grid-header">Dé</div><div class="grid-header">Aspect</div>';
-      
-      const mapping = { feu: "Totem de Feu", eau: "Totem d'Eau", air: "Totem d'Air", terre: "Totem de Terre" };
-      
-      ["feu", "eau", "air", "terre"].forEach(k => {
-        const classe = k === "feu" ? "fire" : k === "eau" ? "water" : k === "air" ? "air" : "earth";
-        cont.innerHTML += `<label>${mapping[k]}</label><div class="dice-val color-${classe}">${t[k]}</div><div class="aspect-val bg-${classe}">${aspectTable[t[k]] >= 0 ? '+'+aspectTable[t[k]] : aspectTable[t[k]]}</div>`;
+    OBR.onReady(async () => {
+      OBR.room.onMetadataChange((metadata) => {
+        if (metadata[EXTENSION_ID]) {
+          mergeMetadata(metadata[EXTENSION_ID]);
+          renderCharacter();
+        }
       });
-      cont.innerHTML += '<hr>';
-      ["res", "choc", "lien", "essence"].forEach(k => {
-        cont.innerHTML += `<label style="grid-column:span 2">${k.toUpperCase()}</label><input type="number" value="${d[k]}" onchange="updateStat('${k}', this.value)">`;
+
+      const metadata = await OBR.room.getMetadata();
+      if (metadata[EXTENSION_ID]) {
+        mergeMetadata(metadata[EXTENSION_ID]);
+      } else {
+        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+      }
+      renderCharacter();
+    });
+
+    function mergeMetadata(incoming) {
+      for (const charKey in defaultDynamicStats) {
+        if (!currentStats[charKey]) currentStats[charKey] = {};
+        for (const statKey in defaultDynamicStats[charKey]) {
+          if (incoming[charKey] && incoming[charKey][statKey] !== undefined) {
+            currentStats[charKey][statKey] = incoming[charKey][statKey];
+          } else {
+            currentStats[charKey][statKey] = defaultDynamicStats[charKey][statKey];
+          }
+        }
+      }
+    }
+
+    function changeCharacter() {
+      selectedChar = document.getElementById("charSelect").value;
+      renderCharacter();
+    }
+
+    async function verifierEtCalculerPhysique() {
+      const dynamic = currentStats[selectedChar];
+      const template = characterTemplates[selectedChar];
+
+      if (!dynamic.age || dynamic.age === 0 || !dynamic.taille || dynamic.taille === 0 || !dynamic.poids || dynamic.poids === 0) {
+        const deTerre = parseInt(template.earth.replace("D", ""), 10);
+        const deEau = parseInt(template.water.replace("D", ""), 10);
+        const deFeu = parseInt(template.fire.replace("D", ""), 10);
+
+        const aspectEau = aspectTable[template.water];
+        const aspectTerre = aspectTable[template.earth];
+
+        const jet3d12 = (Math.floor(Math.random() * 12) + 1) + (Math.floor(Math.random() * 12) + 1) + (Math.floor(Math.random() * 12) + 1);
+        const jet2d12 = (Math.floor(Math.random() * 12) + 1) + (Math.floor(Math.random() * 12) + 1);
+
+        dynamic.age = 21 + aspectEau + aspectTerre;
+        dynamic.poids = 30 + (2 * deTerre) + deEau + jet3d12;
+        dynamic.taille = 80 + (4 * deTerre) + (4 * deFeu) + jet2d12;
+
+        try {
+          await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+        } catch(e) {}
+      }
+    }
+
+    async function renderCharacter() {
+      await verifierEtCalculerPhysique();
+
+      const template = characterTemplates[selectedChar];
+      const dynamic = currentStats[selectedChar];
+      
+      document.getElementById("charBanner").src = template.image;
+      document.getElementById("characterClass").innerText = template.class;
+
+      // Calcul de la valeur entière de l'encombrement
+      const encombrementUnites = Math.floor((dynamic.poids + dynamic.taille) / 20);
+
+      document.getElementById("p-age").innerText = `${dynamic.age} ans`;
+      document.getElementById("p-taille").innerText = `${dynamic.taille} cm`;
+      document.getElementById("p-poids").innerText = `${dynamic.poids} kg`;
+      document.getElementById("p-enc").innerText = `${encombrementUnites} Uté${encombrementUnites > 1 ? 's' : ''}`;
+
+      const container = document.getElementById("statsContainer");
+      container.innerHTML = ""; 
+
+      const hLabel = document.createElement("div"); hLabel.className = "grid-header left"; hLabel.innerText = "Totem";
+      const hDede = document.createElement("div"); hDede.className = "grid-header"; hDede.innerText = "Dé";
+      const hAspect = document.createElement("div"); hAspect.className = "grid-header"; hAspect.innerText = "Aspect";
+      container.appendChild(hLabel); container.appendChild(hDede); container.appendChild(hAspect);
+
+      for (const [key, label] of Object.entries(totemsConfig)) {
+        const labelEl = document.createElement("label");
+        labelEl.innerText = label;
+
+        const diceEl = document.createElement("div");
+        diceEl.className = `dice-val color-${key}`;
+        diceEl.innerText = template[key];
+
+        const aspectEl = document.createElement("div");
+        aspectEl.className = `aspect-val bg-${key}`;
+        const valSigne = aspectTable[template[key]] >= 0 ? `+${aspectTable[template[key]]}` : aspectTable[template[key]];
+        aspectEl.innerText = valSigne;
+
+        container.appendChild(labelEl);
+        container.appendChild(diceEl);
+        container.appendChild(aspectEl);
+      }
+
+      container.appendChild(document.createElement("hr"));
+
+      const fireDiceStr = template.fire; 
+      const fireDiceNum = parseInt(fireDiceStr.replace("D", ""), 10); 
+      const fireAspectVal = aspectTable[fireDiceStr]; 
+      function movimientoCalcul() { return Math.floor(fireDiceNum / 2); }
+
+      // Ligne Initiative
+      const initLabel = document.createElement("label");
+      initLabel.innerText = "Initiative";
+      const initBonusEl = document.createElement("div");
+      initBonusEl.style.gridColumn = "span 2";
+      initBonusEl.style.textAlign = "right";
+      initBonusEl.style.fontStyle = "italic";
+      initBonusEl.style.color = "#aaa";
+      initBonusEl.innerText = `1d12 + (${fireAspectVal >= 0 ? '+' : ''}${fireAspectVal})`;
+      container.appendChild(initLabel);
+      container.appendChild(initBonusEl);
+
+      // Ligne Mouvement
+      const movLabel = document.createElement("label");
+      movLabel.innerText = "Mouvement";
+      const movVal = document.createElement("div");
+      movVal.className = "dice-val";
+      movVal.style.gridColumn = "span 2";
+      movVal.innerText = `${movimientoCalcul()} cases`;
+      container.appendChild(movLabel);
+      container.appendChild(movVal);
+
+      // Ligne Manœuvre
+      const manLabel = document.createElement("label");
+      manLabel.innerText = "Manœuvre";
+      const manVal = document.createElement("div");
+      manVal.className = "dice-val";
+      manVal.style.gridColumn = "span 2";
+      manVal.innerText = "4 Pts";
+      container.appendChild(manLabel);
+      container.appendChild(manVal);
+
+      container.appendChild(document.createElement("hr"));
+
+      for (const [key, label] of Object.entries(secondaryConfig)) {
+        const labelEl = document.createElement("label");
+        labelEl.innerText = label;
+        labelEl.style.gridColumn = "span 2";
+
+        const inputEl = document.createElement("input");
+        inputEl.type = "number";
+        inputEl.value = dynamic[key];
+        inputEl.onchange = (e) => updateStat(key, parseInt(e.target.value, 10));
+
+        container.appendChild(labelEl);
+        container.appendChild(inputEl);
+      }
+    }
+
+    async function updateStat(statKey, newValue) {
+      currentStats[selectedChar][statKey] = newValue;
+      await OBR.room.setMetadata({
+        [EXTENSION_ID]: currentStats
       });
     }
 
-    async function updateStat(k, v) { currentStats[selectedChar][k] = parseInt(v); await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); }
-    function exportCampaignText() { const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentStats)); const a = document.createElement('a'); a.href = data; a.download = "campagne.json"; a.click(); }
-    function importCampaignText(e) { const reader = new FileReader(); reader.onload = (ev) => { currentStats = JSON.parse(ev.target.result); OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); }; reader.readAsText(e.target.files[0]); }
+    function exportCampaignText() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentStats, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "campagne_vallee_totems.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importCampaignText(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          const importedStats = JSON.parse(e.target.result);
+          
+          if (typeof importedStats === 'object' && importedStats !== null) {
+            for (let char in importedStats) {
+              if (currentStats[char]) {
+                currentStats[char] = { ...currentStats[char], ...importedStats[char] };
+              }
+            }
+            if (typeof OBR !== 'undefined' && OBR.room) {
+              await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+              renderCharacter();
+              alert("Campagne chargée et synchronisée !");
+            } else {
+              renderCharacter();
+              alert("Campagne chargée localement.");
+            }
+          }
+        } catch (err) {
+          alert("Erreur lors de la lecture : " + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
   </script>
 </body>
 </html>
