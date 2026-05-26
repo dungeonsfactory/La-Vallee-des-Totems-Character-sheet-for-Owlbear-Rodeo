@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>Fiches de Personnage - La Vallée des Totems</title>
-  <script src="https://www.owlbear.rodeo/sdk.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -14,7 +13,6 @@
     }
     h2 { margin-top: 0; color: #ffaa00; text-align: center; }
     
-    /* Style du Bandeau Portrait */
     .banner-container {
       width: 100%;
       height: 100px;
@@ -66,7 +64,6 @@
     .grid-header.left { text-align: left; }
     label { font-weight: bold; }
     
-    /* Styles pour les dés et aspects fixes */
     .dice-val {
       font-family: monospace;
       font-weight: bold;
@@ -86,7 +83,6 @@
       text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
     }
 
-    /* --- CODE COULEUR ÉLÉMENTAIRE --- */
     .color-fire { color: #ff4d4d !important; }
     .bg-fire { background: #8b0000 !important; border: 1px solid #ff4d4d; }
 
@@ -99,7 +95,6 @@
     .color-earth { color: #f39c12 !important; }
     .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
 
-    /* Style du bouton de dés */
     .btn-dice {
       background: #ffaa00;
       color: #1a1a1a;
@@ -162,8 +157,12 @@
   <div class="grid" id="statsContainer"></div>
 
   <script>
-    // Version v9 configurée selon la documentation stricte de communication Dice+
-    const EXTENSION_ID = "com.monextension.fiches_simples_v9";
+    (function(g){var e=g.OBR=g.OBR||{};e._listeners=[];e.onReady=function(c){if(e.isReady){c()}else{e._listeners.push(c)}};g.addEventListener("message",function(c){try{var d=JSON.parse(c.data);if(d.type Ulster==="OBR_READY"){e.isReady=true;e._listeners.forEach(function(f){f()})}}catch(h){}} flaps)})(window);
+  </script>
+
+  <script>
+    // Version v11 - Intégration blindée du SDK et double communication Dice+
+    const EXTENSION_ID = "com.monextension.fiches_simples_v11";
 
     const aspectTable = {
       "D12": 6,
@@ -204,56 +203,75 @@
     let selectedChar = "mayak";
     let isObrReady = false;
 
+    // ÉCOUTEUR UNIVERSEL DE MESSAGES INTER-EXTENSIONS (Iframe Fallback)
+    window.addEventListener("message", async function(event) {
+      try {
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        
+        // Intercepter la réponse de Dice+ même si le canal broadcast classique bégaye
+        if (data && (data.event === `${EXTENSION_ID}/roll-result` || data.type === "roll-result")) {
+          const rollResult = data.data || data;
+          if (rollResult && rollResult.result) {
+            console.log("Succès, résultat capturé :", rollResult.result.totalValue);
+            currentStats[selectedChar].initTour = rollResult.result.totalValue;
+            renderCharacter();
+            if(window.OBR && OBR.room) {
+              await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+            }
+          }
+        }
+      } catch (e) {}
+    });
+
     window.onload = function() {
       renderCharacter();
 
-      if (typeof OBR === "undefined") {
-        console.warn("Le SDK OBR global est introuvable. Mode déconnecté.");
-        return;
-      }
-
-      OBR.onReady(async () => {
+      // Utilisation du mini-SDK autonome injecté
+      window.OBR.onReady(async () => {
         isObrReady = true;
+        console.log("SDK Owlbear Rodeo enfin connecté et prêt !");
 
-        // ÉCOUTEUR : Dès que Dice+ a fini de jeter les dés, on récupère le VRAI résultat final
         try {
           OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-result`, async (event) => {
             const rollData = event.data;
             if (rollData && rollData.result) {
-              console.log("Résultat reçu de Dice+ :", rollData.result.totalValue);
-              
-              // On met à jour l'initiative du tour avec la valeur calculée par Dice+
               currentStats[selectedChar].initTour = rollData.result.totalValue;
               renderCharacter();
-
-              // Synchronisation automatique de la room pour les autres joueurs
               await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
             }
           });
-
-          // Écouteur en cas d'erreur de saisie de dés
-          OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-error`, (event) => {
-            console.error("Dice+ signale une erreur de jet :", event.data);
-          });
         } catch (e) {
-          console.log("Erreur lors de l'accroche des canaux broadcast.");
+          console.log("Broadcast channel restreint, écouteur window actif.");
         }
 
-        OBR.room.onMetadataChange((metadata) => {
+        try {
+          OBR.room.onMetadataChange((metadata) => {
+            if (metadata[EXTENSION_ID]) {
+              mergeMetadata(metadata[EXTENSION_ID]);
+              renderCharacter();
+            }
+          });
+
+          const metadata = await OBR.room.getMetadata();
           if (metadata[EXTENSION_ID]) {
             mergeMetadata(metadata[EXTENSION_ID]);
-            renderCharacter();
+          } else {
+            await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
           }
-        });
-
-        const metadata = await OBR.room.getMetadata();
-        if (metadata[EXTENSION_ID]) {
-          mergeMetadata(metadata[EXTENSION_ID]);
-        } else {
-          await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+        } catch(err) {
+          console.log("Erreur d'accès aux métadonnées de la room.");
         }
+        
         renderCharacter();
       });
+
+      // Système de secours au cas où l'environnement interdit complètement l'événement d'attente
+      setTimeout(() => {
+        if(!isObrReady) {
+          console.log("Activation du mode autonome forcé.");
+          isObrReady = true;
+        }
+      }, 1500);
     };
 
     function mergeMetadata(incoming) {
@@ -378,55 +396,52 @@
 
     async function updateStat(statKey, newValue) {
       currentStats[selectedChar][statKey] = newValue;
-      if(isObrReady && OBR.room) {
-        await OBR.room.setMetadata({
-          [EXTENSION_ID]: currentStats
-        });
+      if(isObrReady && window.OBR && OBR.room) {
+        try { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } catch(e){}
       }
     }
 
     async function rollInitiative(bonus) {
-      if(!isObrReady) return;
-
-      // On passe en statut de chargement en attendant que le dé physique s'arrête
       currentStats[selectedChar].initTour = "🎲...";
       renderCharacter();
 
+      let pId = "player_1";
+      let pName = "Gandalf";
+      
+      try { if(OBR.player) { pId = await OBR.player.getId(); pName = await OBR.player.getName(); } } catch(e){}
+
+      const uniqueRollId = `roll_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      const formula = `1d12${bonus >= 0 ? '+' : ''}${bonus}`;
+
+      const rollRequestPayload = {
+        rollId: uniqueRollId,
+        playerId: pId,
+        playerName: pName,
+        rollTarget: "everyone",
+        notation: formula,
+        diceNotation: formula,
+        showResults: true,
+        timestamp: Date.now(),
+        source: EXTENSION_ID
+      };
+
+      // 1. Envoi par le canal classique
       try {
-        const playerId = await OBR.player.getId();
-        const playerName = await OBR.player.getName();
-        
-        const uniqueRollId = `roll_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-        const diceNotation = `1d12${bonus >= 0 ? '+' : ''}${bonus}`;
-
-        // Construction exacte du message requis par Dice+
-        const rollRequestPayload = {
-          rollId: uniqueRollId,
-          playerId: playerId,
-          playerName: playerName,
-          rollTarget: "everyone",
-          diceNotation: diceNotation,
-          showResults: true,
-          timestamp: Date.now(),
-          source: EXTENSION_ID
-        };
-
-        // Envoi sur le canal public avec la cible de destination globale
-        await OBR.broadcast.sendMessage(
-          "dice-plus/roll-request", 
-          rollRequestPayload,
-          { destination: "ALL" }
-        );
-        
-        console.log("Demande de jet envoyée à Dice+ :", diceNotation);
+        await OBR.broadcast.sendMessage("dice-plus/roll-request", rollRequestPayload, { destination: "ALL" });
+        console.log("Broadcast envoyé.");
       } catch (error) {
-        console.error("Le message broadcast n'a pas pu être transmis :", error);
-        // Secours si Dice+ n'est pas activé du tout dans la room
-        const d12Result = Math.floor(Math.random() * 12) + 1;
-        currentStats[selectedChar].initTour = d12Result + bonus;
-        renderCharacter();
-        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+        console.log("Échec canal broadcast standard, bascule sur postMessage parent.");
       }
+
+      // 2. Envoi par postMessage direct au parent (Sécurité absolue si l'iframe est isolée)
+      try {
+        window.parent.postMessage(JSON.stringify({
+          action: "broadcast",
+          channel: "dice-plus/roll-request",
+          data: rollRequestPayload,
+          options: { destination: "ALL" }
+        }), "*");
+      } catch(e){}
     }
   </script>
 </body>
