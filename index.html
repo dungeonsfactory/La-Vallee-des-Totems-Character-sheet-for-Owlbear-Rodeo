@@ -1,6 +1,174 @@
-<script>
-    const EXTENSION_ID = "com.monextension.fiches_simples";
-    const DICE_PLUS_ID = "com.missinglinkdev.diceplus"; // ID de Dice+ pour la communication
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Fiches de Personnage - La Vallée des Totems</title>
+  <!-- Chargement du SDK Owlbear Rodeo -->
+  <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 15px;
+    }
+    h2 { margin-top: 0; color: #ffaa00; text-align: center; }
+    
+    /* Style du Bandeau Portrait */
+    .banner-container {
+      width: 100%;
+      height: 100px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      background: #2a2a2a;
+      border: 1px solid #333;
+    }
+    .banner-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    select.char-select {
+      width: 100%;
+      padding: 10px;
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      margin-bottom: 5px;
+      font-size: 16px;
+    }
+    .classe {
+      text-align: center;
+      font-style: italic;
+      color: #aaa;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px 15px;
+      align-items: center;
+    }
+    .grid-header {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #777;
+      font-weight: bold;
+      margin-bottom: -5px;
+      text-align: center;
+    }
+    .grid-header.left { text-align: left; }
+    label { font-weight: bold; }
+    
+    /* Styles pour les dés et aspects fixes */
+    .dice-val {
+      font-family: monospace;
+      font-weight: bold;
+      background: #222;
+      padding: 4px 8px;
+      border-radius: 4px;
+      min-width: 35px;
+      text-align: center;
+    }
+    .aspect-val {
+      font-weight: bold;
+      color: #ffffff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      min-width: 35px;
+      text-align: center;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+
+    /* --- CODE COULEUR ÉLÉMENTAIRE --- */
+    .color-fire { color: #ff4d4d !important; }
+    .bg-fire { background: #8b0000 !important; border: 1px solid #ff4d4d; }
+
+    .color-water { color: #2ecc71 !important; }
+    .bg-water { background: #1b4d3e !important; border: 1px solid #2ecc71; }
+
+    .color-air { color: #3498db !important; }
+    .bg-air { background: #1a365d !important; border: 1px solid #3498db; }
+
+    .color-earth { color: #f39c12 !important; }
+    .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
+
+    /* Style du bouton de dés */
+    .btn-dice {
+      background: #ffaa00;
+      color: #1a1a1a;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .btn-dice:hover {
+      background: #ffc44d;
+    }
+
+    .init-tour-box {
+      background: #333;
+      color: #ffaa00;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-align: center;
+      border: 1px dashed #ffaa00;
+      min-width: 35px;
+    }
+
+    input[type="number"] {
+      width: 60px;
+      padding: 5px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 4px;
+      text-align: center;
+      font-size: 15px;
+    }
+    input[type="number"]:focus {
+      border-color: #ffaa00;
+      outline: none;
+    }
+    hr { border: 0; border-top: 1px solid #444; margin: 15px 0; grid-column: span 3; }
+  </style>
+</head>
+<body>
+
+  <h2>Fiche de Personnage</h2>
+  
+  <!-- Zone du Bandeau Portrait -->
+  <div class="banner-container">
+    <img id="charBanner" src="" alt="Portrait" class="banner-img" />
+  </div>
+  
+  <select id="charSelect" class="char-select" onchange="changeCharacter()">
+    <option value="mayak">Mayak</option>
+    <option value="bawak">Bawak</option>
+    <option value="cylak">Cylak</option>
+    <option value="borak">Borak</option>
+  </select>
+
+  <div id="characterClass" class="classe">-</div>
+
+  <div class="grid" id="statsContainer">
+    <!-- Rempli dynamiquement -->
+  </div>
+
+  <script>
+    // Ajout d'un ID de version pour forcer Owlbear à nettoyer l'ancien cache de stockage corrompu
+    const EXTENSION_ID = "com.monextension.fiches_simples_v2";
+    const DICE_PLUS_ID = "com.missinglinkdev.diceplus";
 
     const aspectTable = {
       "D12": 6,
@@ -40,24 +208,31 @@
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
 
-    OBR.onReady(async () => {
-      OBR.room.onMetadataChange((metadata) => {
+    // Sécurité cruciale : On attend le chargement complet de la page et des scripts CDN
+    window.onload = function() {
+      if (typeof OBR === "undefined") {
+        console.error("Le SDK Owlbear Rodeo n'a pas pu être chargé. Re-tentative...");
+        return;
+      }
+
+      OBR.onReady(async () => {
+        OBR.room.onMetadataChange((metadata) => {
+          if (metadata[EXTENSION_ID]) {
+            mergeMetadata(metadata[EXTENSION_ID]);
+            renderCharacter();
+          }
+        });
+
+        const metadata = await OBR.room.getMetadata();
         if (metadata[EXTENSION_ID]) {
           mergeMetadata(metadata[EXTENSION_ID]);
-          renderCharacter();
+        } else {
+          await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
         }
+        renderCharacter();
       });
+    };
 
-      const metadata = await OBR.room.getMetadata();
-      if (metadata[EXTENSION_ID]) {
-        mergeMetadata(metadata[EXTENSION_ID]);
-      } else {
-        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-      }
-      renderCharacter();
-    });
-
-    // Fonction de sécurité pour fusionner les données existantes
     function mergeMetadata(incoming) {
       for (const charKey in defaultDynamicStats) {
         if (!currentStats[charKey]) currentStats[charKey] = {};
@@ -113,7 +288,7 @@
       // Séparateur
       container.appendChild(document.createElement("hr"));
 
-      // --- SECTION 2 : BLOC DYNAMIQUE (Init, Mouvement, Manœuvre) ---
+      // --- SECTION 2 : BLOC DYNAMIQUE ---
       const fireDiceStr = template.fire; 
       const fireDiceNum = parseInt(fireDiceStr.replace("D", ""), 10); 
       const fireAspectVal = aspectTable[fireDiceStr]; 
@@ -214,3 +389,5 @@
       }
     }
   </script>
+</body>
+</html>
