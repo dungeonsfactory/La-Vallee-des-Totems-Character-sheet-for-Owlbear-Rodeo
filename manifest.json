@@ -2,11 +2,12 @@
   "name": "Fiches de Personnage Simples",
   "version": "1.0.0",
   "manifest_version": 1,
-  "icon": "/icon.svg",
+  "icon": "https://dungeonsfactory.github.io/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/icon.svg",
+  "background_color": "#1e1e24",
   "action": {
     "title": "Fiches Perso",
-    "icon": "/icon.svg",
-    "popover": "/index.html",
+    "icon": "https://dungeonsfactory.github.io/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/icon.svg",
+    "popover": "https://dungeonsfactory.github.io/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/index.html",
     "height": 600,
     "width": 400
   }
