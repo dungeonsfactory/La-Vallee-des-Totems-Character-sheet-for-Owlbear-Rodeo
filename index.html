@@ -14,7 +14,6 @@
     }
     h2 { margin-top: 0; color: #ffaa00; text-align: center; }
     
-    /* Style du Bandeau Portrait */
     .banner-container {
       width: 100%;
       height: 100px;
@@ -66,7 +65,6 @@
     .grid-header.left { text-align: left; }
     label { font-weight: bold; }
     
-    /* Styles pour les dés et aspects fixes */
     .dice-val {
       font-family: monospace;
       font-weight: bold;
@@ -86,7 +84,7 @@
       text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
     }
 
-    /* --- CODE COULEUR ÉLÉMENTAIRE --- */
+    /* COULEURS */
     .color-fire { color: #ff4d4d !important; }
     .bg-fire { background: #8b0000 !important; border: 1px solid #ff4d4d; }
 
@@ -99,7 +97,6 @@
     .color-earth { color: #f39c12 !important; }
     .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
 
-    /* Style du bouton de dés */
     .btn-dice {
       background: #ffaa00;
       color: #1a1a1a;
@@ -162,8 +159,8 @@
   <div class="grid" id="statsContainer"></div>
 
   <script>
-    // Version v13 alignée à 100% sur la documentation officielle OBR Broadcast de Dice+
-    const EXTENSION_ID = "com.valleetotems.fiches_v13";
+    // Version v14 - Intégration du système de Ready Check asynchrone pour s'aligner sur Dice+
+    const EXTENSION_ID = "com.valleetotems.fiches_v14";
 
     const aspectTable = {
       "D12": 6,
@@ -202,43 +199,41 @@
 
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
-    let isObrReady = false;
+    let isDicePlusReady = false;
 
-    window.onload = function() {
-      renderCharacter();
+    // Rendu initial direct pour que l'interface s'affiche quoi qu'il arrive
+    renderCharacter();
 
-      if (typeof OBR === "undefined") {
-        console.warn("Le script OBR n'est pas encore détecté globalement.");
-        return;
+    // Au lieu de window.onload brut, on attend via une boucle infinie que OBR soit injecté
+    const checkObrInterval = setInterval(() => {
+      if (typeof OBR !== "undefined") {
+        clearInterval(checkObrInterval);
+        initialiserExtension();
       }
+    }, 100);
 
-      // Attente de l'établissement du canal de communication officiel d'Owlbear
+    function initialiserExtension() {
       OBR.onReady(async () => {
-        isObrReady = true;
-        console.log("SDK Owlbear Rodeo initialisé avec succès.");
+        console.log("SDK Owlbear Rodeo intercepté. Lancement de la synchronisation...");
 
-        // 1. ÉCOUTEUR DE RÉSULTATS dédié à notre ID source conformément à la doc
+        // 1. Écouteur pour les résultats de dés
         OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-result`, async (event) => {
           const resultPayload = event.data;
           if (resultPayload && resultPayload.result) {
-            console.log("Dice+ a renvoyé le score :", resultPayload.result.totalValue);
-            
-            // Mise à jour de la boîte d'initiative avec le vrai calcul de Dice+
+            console.log("Score intercepté depuis Dice+ :", resultPayload.result.totalValue);
             currentStats[selectedChar].initTour = resultPayload.result.totalValue;
             renderCharacter();
-
-            // Synchronisation de la table
             await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
           }
         });
 
-        // 2. ÉCOUTEUR D'ERREURS dédié à notre ID source
+        // 2. Écouteur pour les erreurs de dés
         OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-error`, (event) => {
-          console.error("Dice+ n'a pas pu exécuter la formule :", event.data.error);
+          console.error("Erreur renvoyée par Dice+ :", event.data.error);
           calculSecoursLocal();
         });
 
-        // Gestion de la synchronisation de la pièce
+        // 3. Gestionnaire de métadonnées pour la room
         OBR.room.onMetadataChange((metadata) => {
           if (metadata[EXTENSION_ID]) {
             mergeMetadata(metadata[EXTENSION_ID]);
@@ -253,8 +248,41 @@
           await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
         }
         renderCharacter();
+
+        // 4. PROTOCOLE DE READY CHECK SPECIFIQUE DICE+
+        conserverConnexionDicePlus();
       });
-    };
+    }
+
+    function conserverConnexionDicePlus() {
+      const checkId = `req_${Date.now()}`;
+      
+      // On écoute la réponse de Dice+ sur le canal isReady
+      const unsubscribe = OBR.broadcast.onMessage("dice-plus/isReady", (event) => {
+        const data = event.data;
+        if (data && 'ready' in data && data.requestId === checkId) {
+          console.log("🎯 Liaison établie avec Dice+ ! Mode connecté activé.");
+          isDicePlusReady = true;
+          unsubscribe();
+        }
+      });
+
+      // On envoie la demande de statut
+      console.log("Ping envoyé vers Dice+...");
+      OBR.broadcast.sendMessage("dice-plus/isReady", {
+        requestId: checkId,
+        timestamp: Date.now()
+      }, { destination: 'ALL' });
+
+      // Si pas de réponse après 2.5 secondes, on relance un ping (Dice+ est peut-être encore en train de charger)
+      setTimeout(() => {
+        if (!isDicePlusReady) {
+          unsubscribe();
+          console.log("Dice+ met du temps à répondre, relance du ping...");
+          conserverConnexionDicePlus();
+        }
+      }, 2500);
+    }
 
     function mergeMetadata(incoming) {
       for (const charKey in defaultDynamicStats) {
@@ -378,74 +406,69 @@
 
     async function updateStat(statKey, newValue) {
       currentStats[selectedChar][statKey] = newValue;
-      if(isObrReady && OBR.room) {
+      if (typeof OBR !== "undefined" && OBR.room) {
         await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
       }
     }
 
     function calculSecoursLocal() {
-      // Si désactivation ou absence de Dice+, calcul mathématique local pour ne pas bloquer le joueur
       const fireDiceStr = characterTemplates[selectedChar].fire;
       const bonus = aspectTable[fireDiceStr];
       const d12Result = Math.floor(Math.random() * 12) + 1;
       currentStats[selectedChar].initTour = d12Result + bonus;
       renderCharacter();
-      if(isObrReady && OBR.room) {
+      if (typeof OBR !== "undefined" && OBR.room) {
         OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
       }
     }
 
     async function rollInitiative(bonus) {
-      // Affichage immédiat du statut d'attente
       currentStats[selectedChar].initTour = "🎲...";
       renderCharacter();
 
-      // Si le SDK n'est pas prêt, on passe directement par le secours local
-      if (!isObrReady) {
-        console.log("Le SDK OBR n'est pas prêt. Utilisation du secours.");
+      // Si Dice+ n'a pas répondu présent aux pings, on applique la sécurité immédiate
+      if (!isDicePlusReady) {
+        console.warn("Dice+ n'est pas encore synchronisé. Calcul local.");
         calculSecoursLocal();
         return;
       }
 
       try {
-        // Récupération dynamique et sécurisée des informations du joueur connecté
         const pId = await OBR.player.getId();
         const pName = await OBR.player.getName();
         
         const uniqueRollId = `roll_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
         const formula = `1d12${bonus >= 0 ? '+' : ''}${bonus}`;
 
-        // Payload STRICTEMENT conforme à la spécification transmise
         const rollPayload = {
           rollId: uniqueRollId,
           playerId: pId,
           playerName: pName,
           rollTarget: 'everyone',
           diceNotation: formula,
-          showResults: true, // Affiche l'animation 3D et le popup par défaut de Dice+
+          showResults: true, 
           timestamp: Date.now(),
           source: EXTENSION_ID
         };
 
-        // ENVOI OFFICIEL par le canal de communication broadcast d'Owlbear Rodeo
         await OBR.broadcast.sendMessage(
           "dice-plus/roll-request",
           rollPayload,
           { destination: 'ALL' }
         );
 
-        console.log("Requête de jet transmise à Dice+ :", formula);
+        console.log("Demande de jet envoyée :", formula);
 
-        // SÉCURITÉ ANTI-BLOCAGE : Si Dice+ est inactif ou désactivé, on débloque au bout de 3 secondes
+        // Sécurité au cas où le dé reste bloqué sur la table
         setTimeout(() => {
           if (currentStats[selectedChar].initTour === "🎲...") {
-            console.warn("Dice+ n'a pas répondu à temps. Bascule sur le calcul local.");
+            console.warn("Délai dépassé pour la réponse du dé. Secours local.");
             calculSecoursLocal();
           }
-        }, 3000);
+        }, 5000);
 
       } catch (error) {
-        console.error("Erreur critique lors de la tentative de jet :", error);
+        console.error("Échec du broadcast :", error);
         calculSecoursLocal();
       }
     }
