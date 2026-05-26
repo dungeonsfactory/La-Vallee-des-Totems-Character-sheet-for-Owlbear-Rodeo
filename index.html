@@ -52,20 +52,21 @@
     const EXTENSION_ID = "com.monextension.fiches_simples";
     const aspectTable = { "D12": 6, "D10": 1, "D8": 0, "D6": -1 };
     const characterTemplates = {
-      mayak: { class: "Chasseresse", image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10" },
-      bawak: { class: "Guérisseur", image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8" },
-      cylak: { class: "Sorçière", image: "cylak.png", fire: "D10", water: "D8", air: "D12", earth: "D6" },
-      borak: { class: "Protecteur", image: "borak.png", fire: "D10", water: "D8", air: "D6", earth: "D12" }
+      mayak: { class: "Chasseresse", image: "mayak.png", feu: "D12", eau: "D6", air: "D8", terre: "D10" },
+      bawak: { class: "Guérisseur", image: "bawak.png", feu: "D6", eau: "D12", air: "D10", terre: "D8" },
+      cylak: { class: "Sorçière", image: "cylak.png", feu: "D10", eau: "D8", air: "D12", terre: "D6" },
+      borak: { class: "Protecteur", image: "borak.png", feu: "D10", eau: "D8", air: "D6", terre: "D12" }
     };
     const defaultDynamicStats = {
-      mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0 },
-      bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0 },
-      cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0 },
-      borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0 }
+      mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 21, taille: 180, poids: 80 },
+      bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 27, taille: 140, poids: 75 },
+      cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 20, taille: 150, poids: 68 },
+      borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 27, taille: 187, poids: 92 }
     };
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
 
+    // Chargement automatique au démarrage
     OBR.onReady(async () => {
       const metadata = await OBR.room.getMetadata();
       if (metadata[EXTENSION_ID]) currentStats = metadata[EXTENSION_ID];
@@ -85,9 +86,13 @@
       document.getElementById("p-enc").innerText = Math.floor((d.poids + d.taille) / 20) + " Utés";
       
       const cont = document.getElementById("statsContainer");
-      cont.innerHTML = '<div class="grid-header">Totem</div><div class="grid-header">Dé</div><div class="grid-header">Aspect</div>';
-      ["fire", "water", "air", "earth"].forEach(k => {
-        cont.innerHTML += `<label>${k.toUpperCase()}</label><div class="dice-val color-${k}">${t[k]}</div><div class="aspect-val bg-${k}">${aspectTable[t[k]] >= 0 ? '+'+aspectTable[t[k]] : aspectTable[t[k]]}</div>`;
+      cont.innerHTML = '<div class="grid-header left">Totem</div><div class="grid-header">Dé</div><div class="grid-header">Aspect</div>';
+      
+      const mapping = { feu: "Totem de Feu", eau: "Totem d'Eau", air: "Totem d'Air", terre: "Totem de Terre" };
+      
+      ["feu", "eau", "air", "terre"].forEach(k => {
+        const classe = k === "feu" ? "fire" : k === "eau" ? "water" : k === "air" ? "air" : "earth";
+        cont.innerHTML += `<label>${mapping[k]}</label><div class="dice-val color-${classe}">${t[k]}</div><div class="aspect-val bg-${classe}">${aspectTable[t[k]] >= 0 ? '+'+aspectTable[t[k]] : aspectTable[t[k]]}</div>`;
       });
       cont.innerHTML += '<hr>';
       ["res", "choc", "lien", "essence"].forEach(k => {
@@ -97,7 +102,7 @@
 
     async function updateStat(k, v) { currentStats[selectedChar][k] = parseInt(v); await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); }
     function exportCampaignText() { const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentStats)); const a = document.createElement('a'); a.href = data; a.download = "campagne.json"; a.click(); }
-    function importCampaignText(e) { const reader = new FileReader(); reader.onload = (ev) => { currentStats = JSON.parse(ev.target.result); OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); alert("Chargé !"); }; reader.readAsText(e.target.files[0]); }
+    function importCampaignText(e) { const reader = new FileReader(); reader.onload = (ev) => { currentStats = JSON.parse(ev.target.result); OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); }; reader.readAsText(e.target.files[0]); }
   </script>
 </body>
 </html>
