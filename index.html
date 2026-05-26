@@ -162,9 +162,8 @@
   <div class="grid" id="statsContainer"></div>
 
   <script>
-    // Version v8 implémentant l'API OBR.broadcast pour Dice+
-    const EXTENSION_ID = "com.monextension.fiches_simples_v8";
-    const DICE_PLUS_ID = "com.missinglinkdev.diceplus";
+    // Version v9 configurée selon la documentation stricte de communication Dice+
+    const EXTENSION_ID = "com.monextension.fiches_simples_v9";
 
     const aspectTable = {
       "D12": 6,
@@ -216,13 +215,28 @@
       OBR.onReady(async () => {
         isObrReady = true;
 
-        // Écouteur pour intercepter les erreurs de lancer envoyées par Dice+
+        // ÉCOUTEUR : Dès que Dice+ a fini de jeter les dés, on récupère le VRAI résultat final
         try {
+          OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-result`, async (event) => {
+            const rollData = event.data;
+            if (rollData && rollData.result) {
+              console.log("Résultat reçu de Dice+ :", rollData.result.totalValue);
+              
+              // On met à jour l'initiative du tour avec la valeur calculée par Dice+
+              currentStats[selectedChar].initTour = rollData.result.totalValue;
+              renderCharacter();
+
+              // Synchronisation automatique de la room pour les autres joueurs
+              await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+            }
+          });
+
+          // Écouteur en cas d'erreur de saisie de dés
           OBR.broadcast.onMessage(`${EXTENSION_ID}/roll-error`, (event) => {
-            console.error("Dice+ n'a pas pu exécuter le jet :", event.data);
+            console.error("Dice+ signale une erreur de jet :", event.data);
           });
         } catch (e) {
-          console.log("Impossible de lier le canal d'erreur de diffusion.");
+          console.log("Erreur lors de l'accroche des canaux broadcast.");
         }
 
         OBR.room.onMetadataChange((metadata) => {
@@ -372,52 +386,46 @@
     }
 
     async function rollInitiative(bonus) {
-      // 1. Calcul mathématique local (pour mettre à jour la case immédiatement)
-      const d12Result = Math.floor(Math.random() * 12) + 1;
-      const totalInit = d12Result + bonus;
+      if(!isObrReady) return;
 
-      currentStats[selectedChar].initTour = totalInit;
+      // On passe en statut de chargement en attendant que le dé physique s'arrête
+      currentStats[selectedChar].initTour = "🎲...";
       renderCharacter();
 
-      if(isObrReady && OBR.room) {
-        // Sauvegarde de l'état dans la room pour synchroniser les joueurs
-        await OBR.room.setMetadata({
-          [EXTENSION_ID]: currentStats
-        });
-
-        const charName = selectedChar.charAt(0).toUpperCase() + selectedChar.slice(1);
+      try {
+        const playerId = await OBR.player.getId();
+        const playerName = await OBR.player.getName();
+        
+        const uniqueRollId = `roll_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
         const diceNotation = `1d12${bonus >= 0 ? '+' : ''}${bonus}`;
 
-        // 2. Notification textuelle générale d'Owlbear Rodeo
-        try {
-          const playerName = await OBR.player.getName();
-          await OBR.notification.show(
-            `🎲 ${playerName} (${charName}) : Initiative ${totalInit} (Jet: ${d12Result} avec ${diceNotation})`,
-            "SUCCESS"
-          );
-        } catch (e) {
-          console.log("Échec de la notification standard.");
-        }
+        // Construction exacte du message requis par Dice+
+        const rollRequestPayload = {
+          rollId: uniqueRollId,
+          playerId: playerId,
+          playerName: playerName,
+          rollTarget: "everyone",
+          diceNotation: diceNotation,
+          showResults: true,
+          timestamp: Date.now(),
+          source: EXTENSION_ID
+        };
 
-        // 3. Envoi via OBR.broadcast conformément à la nouvelle documentation Dice+
-        try {
-          const uniqueRollId = `roll_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-          
-          const rollRequestPayload = {
-            rollId: uniqueRollId,
-            notation: diceNotation,
-            rollTarget: "everyone",
-            source: EXTENSION_ID // Permet à Dice+ de savoir à qui répondre en cas d'échec
-          };
-
-          await OBR.broadcast.sendMessage(
-            `${DICE_PLUS_ID}/roll-request`, 
-            rollRequestPayload
-          );
-          console.log("Message de diffusion envoyé avec succès à Dice+ :", rollRequestPayload);
-        } catch (error) {
-          console.log("Erreur lors de la diffusion du message vers Dice+ :", error);
-        }
+        // Envoi sur le canal public avec la cible de destination globale
+        await OBR.broadcast.sendMessage(
+          "dice-plus/roll-request", 
+          rollRequestPayload,
+          { destination: "ALL" }
+        );
+        
+        console.log("Demande de jet envoyée à Dice+ :", diceNotation);
+      } catch (error) {
+        console.error("Le message broadcast n'a pas pu être transmis :", error);
+        // Secours si Dice+ n'est pas activé du tout dans la room
+        const d12Result = Math.floor(Math.random() * 12) + 1;
+        currentStats[selectedChar].initTour = d12Result + bonus;
+        renderCharacter();
+        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
       }
     }
   </script>
