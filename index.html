@@ -409,8 +409,7 @@
       downloadAnchor.remove();
     }
 
-  // Remplace ta fonction importCampaignText actuelle par celle-ci :
-function importCampaignText(event) {
+  function importCampaignText(event) {
   const file = event.target.files[0];
   if (!file) return;
 
@@ -419,22 +418,29 @@ function importCampaignText(event) {
     try {
       const importedStats = JSON.parse(e.target.result);
       
-      // On vérifie juste que c'est un objet, sans être trop restrictif
+      // Fusion des données
       if (typeof importedStats === 'object' && importedStats !== null) {
-        // On fusionne les données importées avec les nôtres
         for (let char in importedStats) {
           if (currentStats[char]) {
             currentStats[char] = { ...currentStats[char], ...importedStats[char] };
           }
         }
-        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-        renderCharacter();
-        alert("Campagne chargée avec succès !");
+
+        // On vérifie si OBR est bien chargé avant d'essayer de sauvegarder dedans
+        if (typeof OBR !== 'undefined' && OBR.room) {
+          await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+          renderCharacter();
+          alert("Campagne chargée et synchronisée !");
+        } else {
+          // Si on n'est pas dans OBR, on met à jour l'affichage local seulement
+          renderCharacter();
+          alert("Campagne chargée localement (mode hors-ligne).");
+        }
       } else {
-        alert("Fichier JSON invalide.");
+        alert("Format de fichier non reconnu.");
       }
     } catch (err) {
-      alert("Erreur lors de la lecture du fichier : " + err.message);
+      alert("Erreur lors de la lecture : " + err.message);
     }
   };
   reader.readAsText(file);
