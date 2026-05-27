@@ -1,13 +1,13 @@
 {
   "name": "La Vallée des Totems - Feuille d'Aventure",
-  "version": "1.1.0",
-  "manifest_version": 1,
+  "version": "1.1.1",
+  "manifest_version": 1.01,
    "author": "Dungeons Factory",
   "homepage_url": "https://totems.dungeons-factory.com/",
   "description": "Une fiche d'Aventure pour les personnages de la Vallée des Totems.",
   "icon": "https://raw.githubusercontent.com/dungeonsfactory/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/main/df_logo.png",
   "action": {
-    "title": "Fiches Perso",
+    "title": "Feuille d'Aventure",
     "icon": "https://raw.githubusercontent.com/dungeonsfactory/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/main/df_logo.png",
     "popover": "https://dungeonsfactory.github.io/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/index.html",
     "height": 500,
