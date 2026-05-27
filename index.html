@@ -36,11 +36,11 @@
     .tab-btn.active { background: #444; color: #ffaa00; font-weight: bold; }
     .tab-pane { display: none; }
     .tab-pane.active { display: block; }
-    table { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 20px; color: white; }
-    th { background: #444; border: 1px solid #555; padding: 4px; color: #ffaa00; }
-    td { border: 1px solid #555; padding: 2px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px; color: white; }
+    th { background: #444; border: 1px solid #555; padding: 8px; color: #ffaa00; }
+    td { border: 1px solid #555; padding: 8px; text-align: center; }
     input[type="text"] { width: 100%; background: #222; border: none; color: #fff; padding: 2px; box-sizing: border-box; }
-    select { width: 100%; background: #222; color: #fff; border: 1px solid #555; font-size: 9px; }
+    select { width: 100%; background: #222; color: #fff; border: 1px solid #555; font-size: 12px; padding: 4px; }
   </style>
 </head>
 <body>
@@ -72,10 +72,13 @@
 
     <h3>Protection</h3>
     <table>
-      <tr><th>Type</th><th>Solidité</th></tr>
+      <tr><th>Protection</th><th>Forme</th><th>Aspect</th><th>Solidité</th><th>Valeur</th></tr>
       <tr>
-        <td><select id="protSelect" onchange="updateProtection()"><option value="Aucune">Aucune</option><option value="Cuir">Cuir (S:4)</option><option value="Mailles">Mailles (S:6)</option><option value="Plaques">Plaques (S:8)</option></select></td>
-        <td id="protVal" style="text-align:center">-</td>
+        <td><select id="protSelect" onchange="updateProtection()"><option value="">Choisir...</option></select></td>
+        <td id="protForme">-</td>
+        <td id="protAspect">-</td>
+        <td id="protSolidite">-</td>
+        <td id="protValeur" style="font-weight:bold">-</td>
       </tr>
     </table>
 
@@ -102,6 +105,32 @@
   </div>
 
   <script>
+    const protections = { 
+        "Robe en Toile de laine": { s: 6, f: "Air", a: "air" }, "Robe en toile Lourde": { s: 7, f: "Air", a: "air" }, "Manteau Lourd": { s: 8, f: "Air", a: "air" }, "Robe d'éclat": { s: 9, f: "Air", a: "air" },
+        "Cotte d'écorce": { s: 8, f: "Eau", a: "water" }, "Cotte de lianes": { s: 9, f: "Eau", a: "water" }, "Cotte de planches": { s: 10, f: "Eau", a: "water" }, "Armure de l'Arbre": { s: 11, f: "Eau", a: "water" },
+        "Plastron d'écailles": { s: 10, f: "Feu", a: "fire" }, "Plastron de cuir": { s: 11, f: "Feu", a: "fire" }, "Plastron d'os": { s: 12, f: "Feu", a: "fire" }, "Armure du Serpent": { s: 13, f: "Feu", a: "fire" },
+        "Armure de mailles": { s: 12, f: "Terre", a: "earth" }, "Armure de lames de Fer": { s: 13, f: "Terre", a: "earth" }, "Armure de Plaques": { s: 14, f: "Terre", a: "earth" }, "Cuirasse du Protecteur": { s: 15, f: "Terre", a: "earth" }
+    };
+
+    function updateProtection() {
+        const sel = document.getElementById('protSelect');
+        const p = protections[sel.value];
+        if (!p) {
+            document.getElementById('protForme').innerText = "-";
+            document.getElementById('protAspect').innerText = "-";
+            document.getElementById('protSolidite').innerText = "-";
+            document.getElementById('protValeur').innerText = "-";
+            return;
+        }
+        const t = characterTemplates[selectedChar];
+        const aspectVal = aspectTable[t[p.a]];
+        document.getElementById('protForme').innerText = p.f;
+        document.getElementById('protAspect').innerText = (aspectVal >= 0 ? "+" : "") + aspectVal;
+        document.getElementById('protSolidite').innerText = p.s;
+        document.getElementById('protValeur').innerText = (p.s + aspectVal);
+        updateStat('protection', sel.value);
+    }
+
     function showPane(btn, id) {
       document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -113,12 +142,12 @@
     const aspectTable = { "D12": 6, "D10": 1, "D8": 0, "D6": -1 };
     const characterTemplates = { mayak: { class: "Chasseresse", image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10" }, bawak: { class: "Guérisseur", image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8" }, cylak: { class: "Sorçière", image: "cylak.png", fire: "D10", water: "D8", air: "D12", earth: "D6" }, borak: { class: "Protecteur", image: "borak.png", fire: "D10", water: "D8", air: "D6", earth: "D12" } };
     
-    // Ajout de apts: Array(140).fill("") pour chaque personnage
+    // Ajout de apts: [] pour chaque personnage
     const defaultDynamicStats = { 
-        mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") }, 
-        bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") }, 
-        cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") }, 
-        borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") } 
+        mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0, protection: "", apts: Array(140).fill("") }, 
+        bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0, protection: "", apts: Array(140).fill("") }, 
+        cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0, protection: "", apts: Array(140).fill("") }, 
+        borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0, protection: "", apts: Array(140).fill("") } 
     };
     
     const totemsConfig = { fire: "Totem de Feu", water: "Totem d'Eau", air: "Totem d'Air", earth: "Totem de Terre" };
@@ -127,25 +156,19 @@
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
 
+    // Fonction de sauvegarde des aptitudes par personnage
     async function saveAptitudes() {
         const inputs = document.querySelectorAll('#pane2 input');
         currentStats[selectedChar].apts = Array.from(inputs).map(i => i.value);
-        try { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } catch(e) {}
+        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
     }
 
-    function loadAptitudes() {
-        const inputs = document.querySelectorAll('#pane2 input');
-        const apts = currentStats[selectedChar].apts || [];
-        inputs.forEach((input, index) => { input.value = apts[index] || ""; });
-    }
-
-    function updateProtection() {
-        const val = document.getElementById('protSelect').value;
-        const lookup = { "Aucune": "-", "Cuir": "4", "Mailles": "6", "Plaques": "8" };
-        document.getElementById('protVal').innerText = lookup[val];
-    }
-
-    document.addEventListener("DOMContentLoaded", () => { document.getElementById("charSelect").value = "mayak"; renderCharacter(); });
+    document.addEventListener("DOMContentLoaded", () => { 
+        const sel = document.getElementById('protSelect');
+        Object.keys(protections).forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o); });
+        document.getElementById("charSelect").value = "mayak"; 
+        renderCharacter(); 
+    });
 
     OBR.onReady(async () => {
       OBR.room.onMetadataChange((metadata) => { if (metadata[EXTENSION_ID]) { mergeMetadata(metadata[EXTENSION_ID]); renderCharacter(); } });
@@ -155,31 +178,10 @@
       renderCharacter();
     });
 
-    function mergeMetadata(incoming) { 
-        for (const charKey in defaultDynamicStats) { 
-            if (!currentStats[charKey]) currentStats[charKey] = { ...defaultDynamicStats[charKey] }; 
-            for (const statKey in defaultDynamicStats[charKey]) { 
-                currentStats[charKey][statKey] = (incoming[charKey] && incoming[charKey][statKey] !== undefined) ? incoming[charKey][statKey] : defaultDynamicStats[charKey][statKey]; 
-            } 
-        } 
-    }
-
+    function mergeMetadata(incoming) { for (const charKey in defaultDynamicStats) { if (!currentStats[charKey]) currentStats[charKey] = { ...defaultDynamicStats[charKey] }; for (const statKey in defaultDynamicStats[charKey]) { currentStats[charKey][statKey] = (incoming[charKey] && incoming[charKey][statKey] !== undefined) ? incoming[charKey][statKey] : defaultDynamicStats[charKey][statKey]; } } }
     function changeCharacter() { selectedChar = document.getElementById("charSelect").value; renderCharacter(); }
+    async function verifierEtCalculerPhysique() { const dynamic = currentStats[selectedChar]; const template = characterTemplates[selectedChar]; if (!dynamic.age || dynamic.age === 0) { const deTerre = parseInt(template.earth.replace("D", ""), 10); const deEau = parseInt(template.water.replace("D", ""), 10); const deFeu = parseInt(template.fire.replace("D", ""), 10); dynamic.age = 21 + aspectTable[template.water] + aspectTable[template.earth]; dynamic.poids = 30 + (2 * deTerre) + deEau + 20; dynamic.taille = 80 + (4 * deTerre) + (4 * deFeu) + 15; try { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } catch(e) {} } }
     
-    async function verifierEtCalculerPhysique() { 
-        const dynamic = currentStats[selectedChar]; 
-        const template = characterTemplates[selectedChar]; 
-        if (!dynamic.age || dynamic.age === 0) { 
-            const deTerre = parseInt(template.earth.replace("D", ""), 10); 
-            const deEau = parseInt(template.water.replace("D", ""), 10); 
-            const deFeu = parseInt(template.fire.replace("D", ""), 10); 
-            dynamic.age = 21 + aspectTable[template.water] + aspectTable[template.earth]; 
-            dynamic.poids = 30 + (2 * deTerre) + deEau + 20; 
-            dynamic.taille = 80 + (4 * deTerre) + (4 * deFeu) + 15; 
-            try { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } catch(e) {} 
-        } 
-    }
-
     async function renderCharacter() { 
         await verifierEtCalculerPhysique(); 
         const template = characterTemplates[selectedChar]; 
@@ -191,8 +193,12 @@
         document.getElementById("p-taille").innerText = `${dynamic.taille} cm`; 
         document.getElementById("p-poids").innerText = `${dynamic.poids} kg`; 
         document.getElementById("p-enc").innerText = `${enc} Uté`; 
+        document.getElementById('protSelect').value = dynamic.protection || ""; 
+        updateProtection(); 
         
-        loadAptitudes(); // Chargement des aptitudes du perso
+        // Charger les aptitudes spécifiques du personnage
+        const inputs = document.querySelectorAll('#pane2 input');
+        dynamic.apts.forEach((val, i) => { if(inputs[i]) inputs[i].value = val; });
 
         const container = document.getElementById("statsContainer"); 
         container.innerHTML = ""; 
@@ -214,10 +220,8 @@
     }
 
     async function updateStat(k, v) { currentStats[selectedChar][k] = v; await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); }
-    
     function exportCampaignText() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentStats)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "campagne_vallee_totems.json"); document.body.appendChild(dl); dl.click(); dl.remove(); }
-    
-    function importCampaignText(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async function(e) { try { currentStats = JSON.parse(e.target.result); await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); alert("Campagne rechargée !"); } catch (err) { alert("Erreur : " + err.message); } }; reader.readAsText(file); }
+    function importCampaignText(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async function(e) { try { currentStats = JSON.parse(e.target.result); await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); alert("Campagne rechargée !"); } catch (err) { alert("Erreur : " + err.message); } }; reader.readAsText(file); event.target.value = ''; }
   </script>
 </body>
 </html>
