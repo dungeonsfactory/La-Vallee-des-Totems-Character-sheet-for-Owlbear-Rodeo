@@ -43,7 +43,6 @@
   </style>
 </head>
 <body>
-
   <div class="tabs-nav">
     <div class="tab-btn active" onclick="showPane(this, 'pane1')">Stats</div>
     <div class="tab-btn" onclick="showPane(this, 'pane2')">Aptitudes</div>
@@ -74,19 +73,19 @@
   <div id="pane2" class="tab-pane">
     <h3>Assauts</h3>
     <table><tr><th>Assaut</th><th>Test de Réussite</th><th>Portée Int/Ext</th><th>F-Ini</th></tr>
-    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt-input" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
+    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
     </table>
     <h3>Pouvoirs</h3>
     <table><tr><th>Pouvoir</th><th>Test de Réussite</th><th>Portée</th><th>Cible</th><th>F-Ini</th></tr>
-    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt-input" oninput="saveAptitudes()"></td>'.repeat(5)+'</tr>');</script>
+    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt" oninput="saveAptitudes()"></td>'.repeat(5)+'</tr>');</script>
     </table>
     <h3>Spécialités</h3>
     <table><tr><th>Spécialité</th><th>Test de Réussite</th><th>Activ.</th><th>Durée</th></tr>
-    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt-input" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
+    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
     </table>
     <h3>Recettes</h3>
     <table><tr><th>Recette</th><th>Classe/RdS</th><th>Composants</th><th>Enc.</th></tr>
-    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt-input" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
+    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
     </table>
   </div>
 
@@ -102,98 +101,102 @@
     const aspectTable = { "D12": 6, "D10": 1, "D8": 0, "D6": -1 };
     const characterTemplates = { mayak: { class: "Chasseresse", image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10" }, bawak: { class: "Guérisseur", image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8" }, cylak: { class: "Sorçière", image: "cylak.png", fire: "D10", water: "D8", air: "D12", earth: "D6" }, borak: { class: "Protecteur", image: "borak.png", fire: "D10", water: "D8", air: "D6", earth: "D12" } };
     
-    // Structure : on ajoute un tableau 'apts' à chaque personnage
-    let currentData = {
-        mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0, apts: Array(120).fill("") },
-        bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0, apts: Array(120).fill("") },
-        cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0, apts: Array(120).fill("") },
-        borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0, apts: Array(120).fill("") }
+    const defaultDynamicStats = { 
+        mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") }, 
+        bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") }, 
+        cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") }, 
+        borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") } 
     };
+    
+    let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
+    const totemsConfig = { fire: "Totem de Feu", water: "Totem d'Eau", air: "Totem d'Air", earth: "Totem de Terre" };
+    const secondaryConfig = { res: "Valeur de Résistance", choc: "Valeur de Choc", lien: "Valeur de Lien", essence: "Valeur d'Essence" };
 
     document.addEventListener("DOMContentLoaded", () => { renderCharacter(); });
 
     OBR.onReady(async () => {
-      OBR.room.onMetadataChange((metadata) => { if (metadata[EXTENSION_ID]) { currentData = metadata[EXTENSION_ID]; renderCharacter(); } });
+      OBR.room.onMetadataChange((metadata) => { if (metadata[EXTENSION_ID]) { currentStats = metadata[EXTENSION_ID]; renderCharacter(); } });
       const metadata = await OBR.room.getMetadata();
-      if (metadata[EXTENSION_ID]) { currentData = metadata[EXTENSION_ID]; renderCharacter(); }
+      if (metadata[EXTENSION_ID]) { currentStats = metadata[EXTENSION_ID]; renderCharacter(); }
+      else { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); }
     });
 
     function changeCharacter() { selectedChar = document.getElementById("charSelect").value; renderCharacter(); }
 
     async function saveAptitudes() {
-        const inputs = document.querySelectorAll('.apt-input');
-        currentData[selectedChar].apts = Array.from(inputs).map(i => i.value);
-        await OBR.room.setMetadata({ [EXTENSION_ID]: currentData });
+        const inputs = document.querySelectorAll('.apt');
+        currentStats[selectedChar].apts = Array.from(inputs).map(i => i.value);
+        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
     }
 
-    async function verifierEtCalculerPhysique() {
-        const dynamic = currentData[selectedChar];
-        const template = characterTemplates[selectedChar];
-        if (!dynamic.age || dynamic.age === 0) {
-            const deTerre = parseInt(template.earth.replace("D", ""), 10);
-            const deEau = parseInt(template.water.replace("D", ""), 10);
-            const deFeu = parseInt(template.fire.replace("D", ""), 10);
-            dynamic.age = 21 + aspectTable[template.water] + aspectTable[template.earth];
-            dynamic.poids = 30 + (2 * deTerre) + deEau + 20;
-            dynamic.taille = 80 + (4 * deTerre) + (4 * deFeu) + 15;
-            await OBR.room.setMetadata({ [EXTENSION_ID]: currentData });
-        }
+    async function verifierEtCalculerPhysique() { 
+        const dynamic = currentStats[selectedChar]; 
+        const template = characterTemplates[selectedChar]; 
+        if (!dynamic.age || dynamic.age === 0) { 
+            const deTerre = parseInt(template.earth.replace("D", ""), 10); 
+            const deEau = parseInt(template.water.replace("D", ""), 10); 
+            const deFeu = parseInt(template.fire.replace("D", ""), 10); 
+            dynamic.age = 21 + aspectTable[template.water] + aspectTable[template.earth]; 
+            dynamic.poids = 30 + (2 * deTerre) + deEau + 20; 
+            dynamic.taille = 80 + (4 * deTerre) + (4 * deFeu) + 15; 
+        } 
     }
 
-    async function renderCharacter() {
-        await verifierEtCalculerPhysique();
-        const template = characterTemplates[selectedChar];
-        const dynamic = currentData[selectedChar];
-        document.getElementById("charBanner").src = template.image;
-        document.getElementById("characterClass").innerText = template.class;
-        document.getElementById("p-age").innerText = `${dynamic.age} ans`;
-        document.getElementById("p-taille").innerText = `${dynamic.taille} cm`;
-        document.getElementById("p-poids").innerText = `${dynamic.poids} kg`;
-        document.getElementById("p-enc").innerText = `${Math.floor((dynamic.poids + dynamic.taille) / 20)} Uté`;
+    async function renderCharacter() { 
+        await verifierEtCalculerPhysique(); 
+        const template = characterTemplates[selectedChar]; 
+        const dynamic = currentStats[selectedChar]; 
+        document.getElementById("charBanner").src = template.image; 
+        document.getElementById("characterClass").innerText = template.class; 
+        document.getElementById("p-age").innerText = `${dynamic.age} ans`; 
+        document.getElementById("p-taille").innerText = `${dynamic.taille} cm`; 
+        document.getElementById("p-poids").innerText = `${dynamic.poids} kg`; 
+        document.getElementById("p-enc").innerText = `${Math.floor((dynamic.poids + dynamic.taille) / 20)} Uté`; 
+        
+        const inputs = document.querySelectorAll('.apt');
+        if(dynamic.apts) dynamic.apts.forEach((val, i) => { if(inputs[i]) inputs[i].value = val; });
+        else inputs.forEach(i => i.value = "");
 
-        // Remplir les inputs aptitudes
-        const inputs = document.querySelectorAll('.apt-input');
-        dynamic.apts.forEach((val, i) => { if(inputs[i]) inputs[i].value = val; });
-
-        const container = document.getElementById("statsContainer");
-        container.innerHTML = "";
-        const hL = document.createElement("div"); hL.className = "grid-header left"; hL.innerText = "Totem"; container.appendChild(hL);
-        const hD = document.createElement("div"); hD.className = "grid-header"; hD.innerText = "Dé"; container.appendChild(hD);
-        const hA = document.createElement("div"); hA.className = "grid-header"; hA.innerText = "Aspect"; container.appendChild(hA);
-        const totemsConfig = { fire: "Totem de Feu", water: "Totem d'Eau", air: "Totem d'Air", earth: "Totem de Terre" };
-        for (const [k, l] of Object.entries(totemsConfig)) {
-            const lb = document.createElement("label"); lb.innerText = l;
-            const di = document.createElement("div"); di.className = `dice-val color-${k}`; di.innerText = template[k];
-            const as = document.createElement("div"); as.className = `aspect-val bg-${k}`; as.innerText = (aspectTable[template[k]] >= 0 ? "+" : "") + aspectTable[template[k]];
-            container.appendChild(lb); container.appendChild(di); container.appendChild(as);
-        }
-        container.appendChild(document.createElement("hr"));
-        // ... (Suite de votre rendu stats original)
-        const secondaryConfig = { res: "Valeur de Résistance", choc: "Valeur de Choc", lien: "Valeur de Lien", essence: "Valeur d'Essence" };
-        for (const [k, l] of Object.entries(secondaryConfig)) {
-            const lb = document.createElement("label"); lb.innerText = l; lb.style.gridColumn = "span 2";
-            const inP = document.createElement("input"); inP.type = "number"; inP.value = dynamic[k]; inP.onchange = (e) => updateStat(k, parseInt(e.target.value, 10));
-            container.appendChild(lb); container.appendChild(inP);
-        }
+        const container = document.getElementById("statsContainer"); 
+        container.innerHTML = ""; 
+        const hL = document.createElement("div"); hL.className = "grid-header left"; hL.innerText = "Totem"; container.appendChild(hL); 
+        const hD = document.createElement("div"); hD.className = "grid-header"; hD.innerText = "Dé"; container.appendChild(hD); 
+        const hA = document.createElement("div"); hA.className = "grid-header"; hA.innerText = "Aspect"; container.appendChild(hA); 
+        for (const [k, l] of Object.entries(totemsConfig)) { 
+            const lb = document.createElement("label"); lb.innerText = l; 
+            const di = document.createElement("div"); di.className = `dice-val color-${k}`; di.innerText = template[k]; 
+            const as = document.createElement("div"); as.className = `aspect-val bg-${k}`; as.innerText = (aspectTable[template[k]] >= 0 ? "+" : "") + aspectTable[template[k]]; 
+            container.appendChild(lb); container.appendChild(di); container.appendChild(as); 
+        } 
+        
+        container.appendChild(document.createElement("hr")); 
+        
+        // Bloc Protections
+        const initL = document.createElement("label"); initL.innerText = "Initiative"; 
+        const initV = document.createElement("div"); initV.style.gridColumn = "span 2"; initV.style.textAlign = "right"; initV.innerText = `1d12 + (${aspectTable[template.fire] >= 0 ? '+' : ''}${aspectTable[template.fire]})`; 
+        container.appendChild(initL); container.appendChild(initV); 
+        const movL = document.createElement("label"); movL.innerText = "Mouvement"; 
+        const movV = document.createElement("div"); movV.className = "dice-val"; movV.style.gridColumn = "span 2"; movV.innerText = `${Math.floor(parseInt(template.fire.replace("D",""),10)/2)} cases`; 
+        container.appendChild(movL); container.appendChild(movV); 
+        const manL = document.createElement("label"); manL.innerText = "Manœuvre"; 
+        const manV = document.createElement("div"); manV.className = "dice-val"; manV.style.gridColumn = "span 2"; manV.innerText = "4 Pts"; 
+        container.appendChild(manL); container.appendChild(manV); 
+        
+        container.appendChild(document.createElement("hr")); 
+        
+        for (const [k, l] of Object.entries(secondaryConfig)) { 
+            const lb = document.createElement("label"); lb.innerText = l; lb.style.gridColumn = "span 2"; 
+            const inP = document.createElement("input"); inP.type = "number"; inP.value = dynamic[k]; inP.onchange = (e) => updateStat(k, parseInt(e.target.value, 10)); 
+            container.appendChild(lb); container.appendChild(inP); 
+        } 
     }
 
-    async function updateStat(k, v) { currentData[selectedChar][k] = v; await OBR.room.setMetadata({ [EXTENSION_ID]: currentData }); }
-
-    function exportCampaignText() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentData));
-        const dl = document.createElement('a');
-        dl.setAttribute("href", dataStr);
-        dl.setAttribute("download", "campagne_vallee_totems.json");
-        document.body.appendChild(dl); dl.click(); dl.remove();
-    }
-
-    function importCampaignText(event) {
-        const file = event.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async function(e) { try { currentData = JSON.parse(e.target.result); await OBR.room.setMetadata({ [EXTENSION_ID]: currentData }); renderCharacter(); } catch (err) { alert("Erreur : " + err.message); } };
-        reader.readAsText(file);
-    }
+    async function updateStat(k, v) { currentStats[selectedChar][k] = v; await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); }
+    
+    function exportCampaignText() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentStats)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "campagne_vallee_totems.json"); document.body.appendChild(dl); dl.click(); dl.remove(); }
+    
+    function importCampaignText(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async function(e) { try { currentStats = JSON.parse(e.target.result); await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); alert("Campagne rechargée !"); } catch (err) { alert("Erreur : " + err.message); } }; reader.readAsText(file); }
   </script>
 </body>
 </html>
