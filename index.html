@@ -6,7 +6,6 @@
   <title>Fiches de Personnage - La Vallée des Totems</title>
   <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk"></script>
   <style>
-    /* (Mêmes styles que précédemment, inchangés) */
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #e0e0e0; margin: 0; padding: 15px; }
     h2 { margin-top: 0; color: #ffaa00; text-align: center; margin-bottom: 5px; }
     h3 { color: #ffaa00; font-size: 14px; border-bottom: 1px solid #444; margin-bottom: 10px; }
@@ -93,11 +92,11 @@
     </table>
     <h3>Spécialités</h3>
     <table><tr><th>Spécialité</th><th>Test de Réussite</th><th>Activ.</th><th>Durée</th></tr>
-    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text"></td>'.repeat(4)+'</tr>');</script>
+    <script>for(let i=0; i<10; i++) i++) document.write('<tr>'+'<td><input type="text"></td>'.repeat(4)+'</tr>');</script>
     </table>
     <h3>Recettes</h3>
     <table><tr><th>Recette</th><th>Classe/RdS</th><th>Composants</th><th>Enc.</th></tr>
-    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text"></td>'.repeat(4)+'</tr>');</script>
+    <script>for(let i=0; i<10; i++) i++) document.write('<tr>'+'<td><input type="text"></td>'.repeat(4)+'</tr>');</script>
     </table>
   </div>
   <script>
@@ -110,30 +109,7 @@
     let selectedChar = "mayak";
     function showPane(btn, id) { document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(id).classList.add('active'); btn.classList.add('active'); }
     document.addEventListener("DOMContentLoaded", () => { const select = document.getElementById('protSelect'); Object.keys(protections).forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; select.appendChild(o); }); document.getElementById("charSelect").value = "mayak"; });
-       
-OBR.onReady(async () => {
-      // 1. On écoute les changements futurs
-      OBR.room.onMetadataChange((metadata) => { 
-          if (metadata[EXTENSION_ID]) { 
-              mergeMetadata(metadata[EXTENSION_ID]); 
-              renderCharacter(); 
-          } 
-      });
-
-      // 2. On récupère les données actuelles
-      const metadata = await OBR.room.getMetadata();
-      if (metadata[EXTENSION_ID]) {
-          mergeMetadata(metadata[EXTENSION_ID]);
-      } else {
-          // Si aucune donnée n'existe, on initialise le serveur avec les valeurs par défaut
-          await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-      }
-      
-      // 3. On attend un tout petit peu pour être sûr que le rendu est prêt
-      setTimeout(() => {
-          renderCharacter();
-      }, 100); 
-    });   
+    OBR.onReady(async () => { OBR.room.onMetadataChange((metadata) => { if (metadata[EXTENSION_ID]) { mergeMetadata(metadata[EXTENSION_ID]); renderCharacter(); } }); const metadata = await OBR.room.getMetadata(); if (metadata[EXTENSION_ID]) mergeMetadata(metadata[EXTENSION_ID]); else await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); setTimeout(() => renderCharacter(), 100); });
     function mergeMetadata(incoming) { for (const charKey in defaultDynamicStats) { if (!currentStats[charKey]) currentStats[charKey] = {}; for (const statKey in defaultDynamicStats[charKey]) { currentStats[charKey][statKey] = (incoming[charKey] && incoming[charKey][statKey] !== undefined) ? incoming[charKey][statKey] : defaultDynamicStats[charKey][statKey]; } } }
     function changeCharacter() { selectedChar = document.getElementById("charSelect").value; renderCharacter(); }
     function updateProtection() { const sel = document.getElementById('protSelect'); const p = protections[sel.value]; if (!p) { document.getElementById('protForme').innerText = "-"; return; } const t = characterTemplates[selectedChar]; const valA = aspectTable[t[p.a]]; document.getElementById('protForme').innerText = p.f; document.getElementById('protAspect').innerText = (valA >= 0 ? "+" : "") + valA; document.getElementById('protSolidite').innerText = p.s; document.getElementById('protValeur').innerText = p.s + valA; updateStat('protection', sel.value); }
