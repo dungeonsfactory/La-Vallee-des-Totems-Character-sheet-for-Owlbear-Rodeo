@@ -221,7 +221,33 @@
 
     async function updateStat(k, v) { currentStats[selectedChar][k] = v; await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); }
     function exportCampaignText() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentStats)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "campagne_vallee_totems.json"); document.body.appendChild(dl); dl.click(); dl.remove(); }
-    function importCampaignText(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async function(e) { try { currentStats = JSON.parse(e.target.result); await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); alert("Campagne rechargée !"); } catch (err) { alert("Erreur : " + err.message); } }; reader.readAsText(file); event.target.value = ''; }
+function importCampaignText(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                
+                // On met à jour les données
+                currentStats = importedData;
+                
+                // On met à jour la base de données dans OBR si disponible
+                if (typeof OBR !== 'undefined' && OBR.room) {
+                    await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+                }
+                
+                // LIGNE CLÉ : On force le rendu pour réafficher les valeurs chargées
+                await renderCharacter();
+                
+                alert("Campagne rechargée avec succès !");
+            } catch (err) {
+                alert("Erreur lors du chargement : " + err.message);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    } 
   </script>
 </body>
 </html>
