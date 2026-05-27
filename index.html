@@ -127,7 +127,38 @@
     async function renderCharacter() { await verifierEtCalculerPhysique(); const template = characterTemplates[selectedChar]; const dynamic = currentStats[selectedChar]; document.getElementById("charBanner").src = template.image; document.getElementById("characterClass").innerText = template.class; const enc = Math.floor((dynamic.poids + dynamic.taille) / 20); document.getElementById("p-age").innerText = `${dynamic.age} ans`; document.getElementById("p-taille").innerText = `${dynamic.taille} cm`; document.getElementById("p-poids").innerText = `${dynamic.poids} kg`; document.getElementById("p-enc").innerText = `${enc} Uté`; const container = document.getElementById("statsContainer"); container.innerHTML = ""; const hL = document.createElement("div"); hL.className = "grid-header left"; hL.innerText = "Totem"; container.appendChild(hL); const hD = document.createElement("div"); hD.className = "grid-header"; hD.innerText = "Dé"; container.appendChild(hD); const hA = document.createElement("div"); hA.className = "grid-header"; hA.innerText = "Aspect"; container.appendChild(hA); for (const [k, l] of Object.entries(totemsConfig)) { const lb = document.createElement("label"); lb.innerText = l; const di = document.createElement("div"); di.className = `dice-val color-${k}`; di.innerText = template[k]; const as = document.createElement("div"); as.className = `aspect-val bg-${k}`; as.innerText = (aspectTable[template[k]] >= 0 ? "+" : "") + aspectTable[template[k]]; container.appendChild(lb); container.appendChild(di); container.appendChild(as); } container.appendChild(document.createElement("hr")); const initL = document.createElement("label"); initL.innerText = "Initiative"; const initV = document.createElement("div"); initV.style.gridColumn = "span 2"; initV.style.textAlign = "right"; initV.innerText = `1d12 + (${aspectTable[template.fire] >= 0 ? '+' : ''}${aspectTable[template.fire]})`; container.appendChild(initL); container.appendChild(initV); const movL = document.createElement("label"); movL.innerText = "Mouvement"; const movV = document.createElement("div"); movV.className = "dice-val"; movV.style.gridColumn = "span 2"; movV.innerText = `${Math.floor(parseInt(template.fire.replace("D",""),10)/2)} cases`; container.appendChild(movL); container.appendChild(movV); const manL = document.createElement("label"); manL.innerText = "Manœuvre"; const manV = document.createElement("div"); manV.className = "dice-val"; manV.style.gridColumn = "span 2"; manV.innerText = "4 Pts"; container.appendChild(manL); container.appendChild(manV); container.appendChild(document.createElement("hr")); for (const [k, l] of Object.entries(secondaryConfig)) { const lb = document.createElement("label"); lb.innerText = l; lb.style.gridColumn = "span 2"; const inP = document.createElement("input"); inP.type = "number"; inP.value = dynamic[k]; inP.onchange = (e) => updateStat(k, parseInt(e.target.value, 10)); container.appendChild(lb); container.appendChild(inP); } }
     async function updateStat(k, v) { currentStats[selectedChar][k] = v; await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); }
     function exportCampaignText() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentStats)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "campagne_vallee_totems.json"); document.body.appendChild(dl); dl.click(); dl.remove(); }
-    function importCampaignText(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = async function(e) { try { const imp = JSON.parse(e.target.result); for (let c in imp) { if (currentStats[c]) currentStats[c] = { ...currentStats[c], ...imp[c] }; } await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); alert("Campagne chargée !"); } catch (err) { alert("Erreur : " + err.message); } }; r.readAsText(f); }
+    function importCampaignText(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            console.log("Données importées :", importedData);
+
+            // 1. Mise à jour des Stats
+            if (importedData.mayak) { // Vérifie si ce sont bien des stats
+                currentStats = importedData; 
+                
+                // 2. Sauvegarde dans Owlbear pour synchroniser
+                if (typeof OBR !== 'undefined' && OBR.room) {
+                    await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+                }
+                
+                // 3. Re-dessine l'interface
+                renderCharacter();
+                alert("Données rechargées avec succès !");
+            } else {
+                alert("Le format du fichier ne semble pas correspondre à une sauvegarde.");
+            }
+        } catch (err) {
+            console.error("Erreur import :", err);
+            alert("Erreur lors de la lecture : " + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
   </script>
 </body>
 </html>
