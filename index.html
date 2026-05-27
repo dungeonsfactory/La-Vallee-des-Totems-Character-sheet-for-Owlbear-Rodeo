@@ -6,6 +6,7 @@
   <title>Fiches de Personnage - La Vallée des Totems</title>
   <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk"></script>
   <style>
+    /* (Mêmes styles que précédemment, inchangés) */
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #e0e0e0; margin: 0; padding: 15px; }
     h2 { margin-top: 0; color: #ffaa00; text-align: center; margin-bottom: 5px; }
     h3 { color: #ffaa00; font-size: 14px; border-bottom: 1px solid #444; margin-bottom: 10px; }
@@ -45,12 +46,10 @@
   </style>
 </head>
 <body>
-
   <div class="tabs-nav">
     <div class="tab-btn active" onclick="showPane(this, 'pane1')">Stats</div>
     <div class="tab-btn" onclick="showPane(this, 'pane2')">Aptitudes</div>
   </div>
-
   <div id="pane1" class="tab-pane active">
     <h2>Fiche de Personnage</h2>
     <div class="io-panel">
@@ -83,7 +82,6 @@
     </table>
     <div class="grid" id="statsContainer"></div>
   </div>
-
   <div id="pane2" class="tab-pane">
     <h3>Assauts</h3>
     <table><tr><th>Assaut</th><th>Test de Réussite</th><th>Portée Int/Ext</th><th>F-Ini</th></tr>
@@ -102,52 +100,23 @@
     <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text"></td>'.repeat(4)+'</tr>');</script>
     </table>
   </div>
-
   <script>
     const EXTENSION_ID = "com.monextension.fiches_simples";
     const aspectTable = { "D12": 6, "D10": 1, "D8": 0, "D6": -1 };
     const characterTemplates = { mayak: { class: "Chasseresse", image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10" }, bawak: { class: "Guérisseur", image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8" }, cylak: { class: "Sorçière", image: "cylak.png", fire: "D10", water: "D8", air: "D12", earth: "D6" }, borak: { class: "Protecteur", image: "borak.png", fire: "D10", water: "D8", air: "D6", earth: "D12" } };
     const defaultDynamicStats = { mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0, protection: "" }, bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0, protection: "" }, cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0, protection: "" }, borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0, protection: "" } };
     const protections = { "Robe en Toile de laine": { s: 6, f: "Air", a: "air" }, "Robe en toile Lourde": { s: 7, f: "Air", a: "air" }, "Manteau Lourd": { s: 8, f: "Air", a: "air" }, "Robe d'éclat": { s: 9, f: "Air", a: "air" }, "Cotte d'écorce": { s: 8, f: "Eau", a: "water" }, "Cotte de lianes": { s: 9, f: "Eau", a: "water" }, "Cotte de planches": { s: 10, f: "Eau", a: "water" }, "Armure de l'Arbre": { s: 11, f: "Eau", a: "water" }, "Plastron d'écailles": { s: 10, f: "Feu", a: "fire" }, "Plastron de cuir": { s: 11, f: "Feu", a: "fire" }, "Plastron d'os": { s: 12, f: "Feu", a: "fire" }, "Armure du Serpent": { s: 13, f: "Feu", a: "fire" }, "Armure de mailles": { s: 12, f: "Terre", a: "earth" }, "Armure de lames de Fer": { s: 13, f: "Terre", a: "earth" }, "Armure de Plaques": { s: 14, f: "Terre", a: "earth" }, "Cuirasse du Protecteur": { s: 15, f: "Terre", a: "earth" } };
-    
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
-
     function showPane(btn, id) { document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(id).classList.add('active'); btn.classList.add('active'); }
-    document.addEventListener("DOMContentLoaded", () => { 
-        const select = document.getElementById('protSelect'); 
-        Object.keys(protections).forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; select.appendChild(o); });
-        document.getElementById("charSelect").value = "mayak"; 
-    });
-
-    OBR.onReady(async () => {
-      OBR.room.onMetadataChange((metadata) => { if (metadata[EXTENSION_ID]) { mergeMetadata(metadata[EXTENSION_ID]); renderCharacter(); } });
-      const metadata = await OBR.room.getMetadata();
-      if (metadata[EXTENSION_ID]) mergeMetadata(metadata[EXTENSION_ID]);
-      else await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-      renderCharacter();
-    });
-
+    document.addEventListener("DOMContentLoaded", () => { const select = document.getElementById('protSelect'); Object.keys(protections).forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; select.appendChild(o); }); document.getElementById("charSelect").value = "mayak"; });
+    OBR.onReady(async () => { OBR.room.onMetadataChange((metadata) => { if (metadata[EXTENSION_ID]) { mergeMetadata(metadata[EXTENSION_ID]); renderCharacter(); } }); const metadata = await OBR.room.getMetadata(); if (metadata[EXTENSION_ID]) mergeMetadata(metadata[EXTENSION_ID]); else await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); });
     function mergeMetadata(incoming) { for (const charKey in defaultDynamicStats) { if (!currentStats[charKey]) currentStats[charKey] = {}; for (const statKey in defaultDynamicStats[charKey]) { currentStats[charKey][statKey] = (incoming[charKey] && incoming[charKey][statKey] !== undefined) ? incoming[charKey][statKey] : defaultDynamicStats[charKey][statKey]; } } }
     function changeCharacter() { selectedChar = document.getElementById("charSelect").value; renderCharacter(); }
-    
-    function updateProtection() {
-        const sel = document.getElementById('protSelect');
-        const p = protections[sel.value];
-        if (!p) { document.getElementById('protForme').innerText = "-"; return; }
-        const t = characterTemplates[selectedChar];
-        const valA = aspectTable[t[p.a]];
-        document.getElementById('protForme').innerText = p.f;
-        document.getElementById('protAspect').innerText = (valA >= 0 ? "+" : "") + valA;
-        document.getElementById('protSolidite').innerText = p.s;
-        document.getElementById('protValeur').innerText = p.s + valA;
-        updateStat('protection', sel.value);
-    }
-
+    function updateProtection() { const sel = document.getElementById('protSelect'); const p = protections[sel.value]; if (!p) { document.getElementById('protForme').innerText = "-"; return; } const t = characterTemplates[selectedChar]; const valA = aspectTable[t[p.a]]; document.getElementById('protForme').innerText = p.f; document.getElementById('protAspect').innerText = (valA >= 0 ? "+" : "") + valA; document.getElementById('protSolidite').innerText = p.s; document.getElementById('protValeur').innerText = p.s + valA; updateStat('protection', sel.value); }
     async function verifierEtCalculerPhysique() { const d = currentStats[selectedChar]; const t = characterTemplates[selectedChar]; if (!d.age || d.age === 0) { d.age = 21 + aspectTable[t.water] + aspectTable[t.earth]; d.poids = 30 + (2 * parseInt(t.earth.replace("D",""),10)) + parseInt(t.water.replace("D",""),10) + 20; d.taille = 80 + (4 * parseInt(t.earth.replace("D",""),10)) + (4 * parseInt(t.fire.replace("D",""),10)) + 15; try { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } catch(e) {} } }
-    async function renderCharacter() { await verifierEtCalculerPhysique(); const t = characterTemplates[selectedChar]; const d = currentStats[selectedChar]; document.getElementById("charBanner").src = t.image; document.getElementById("characterClass").innerText = t.class; document.getElementById("p-age").innerText = `${d.age} ans`; document.getElementById("p-taille").innerText = `${d.taille} cm`; document.getElementById("p-poids").innerText = `${d.poids} kg`; document.getElementById("p-enc").innerText = `${Math.floor((d.poids + d.taille) / 20)} Uté`; document.getElementById('protSelect').value = d.protection || ""; updateProtection(); const container = document.getElementById("statsContainer"); container.innerHTML = ""; ["Totem", "Dé", "Aspect"].forEach(h => { const div = document.createElement("div"); div.className = "grid-header"; if(h=="Totem") div.classList.add("left"); div.innerText = h; container.appendChild(div); }); ["fire", "water", "air", "earth"].forEach(k => { const lb = document.createElement("label"); lb.innerText = {"fire":"Totem de Feu","water":"Totem d'Eau","air":"Totem d'Air","earth":"Totem de Terre"}[k]; const di = document.createElement("div"); di.className = `dice-val color-${k}`; di.innerText = t[k]; const as = document.createElement("div"); as.className = `aspect-val bg-${k}`; as.innerText = (aspectTable[t[k]] >= 0 ? "+" : "") + aspectTable[t[k]]; container.appendChild(lb); container.appendChild(di); container.appendChild(as); }); container.appendChild(document.createElement("hr")); ["res", "choc", "lien", "essence"].forEach(k => { const lb = document.createElement("label"); lb.innerText = {"res":"Valeur de Résistance","choc":"Valeur de Choc","lien":"Valeur de Lien","essence":"Valeur d'Essence"}[k]; lb.style.gridColumn = "span 2"; const inP = document.createElement("input"); inP.type = "number"; inP.value = d[k]; inP.onchange = (e) => updateStat(k, parseInt(e.target.value, 10)); container.appendChild(lb); container.appendChild(inP); }); }
+    async function renderCharacter() { const d = currentStats[selectedChar]; if (!d) return; await verifierEtCalculerPhysique(); const t = characterTemplates[selectedChar]; document.getElementById("charBanner").src = t.image; document.getElementById("characterClass").innerText = t.class; document.getElementById("p-age").innerText = `${d.age} ans`; document.getElementById("p-taille").innerText = `${d.taille} cm`; document.getElementById("p-poids").innerText = `${d.poids} kg`; document.getElementById("p-enc").innerText = `${Math.floor((d.poids + d.taille) / 20)} Uté`; document.getElementById('protSelect').value = d.protection || ""; updateProtection(); const container = document.getElementById("statsContainer"); container.innerHTML = ""; ["Totem", "Dé", "Aspect"].forEach(h => { const div = document.createElement("div"); div.className = "grid-header"; if(h=="Totem") div.classList.add("left"); div.innerText = h; container.appendChild(div); }); ["fire", "water", "air", "earth"].forEach(k => { const lb = document.createElement("label"); lb.innerText = {"fire":"Totem de Feu","water":"Totem d'Eau","air":"Totem d'Air","earth":"Totem de Terre"}[k]; const di = document.createElement("div"); di.className = `dice-val color-${k}`; di.innerText = t[k]; const as = document.createElement("div"); as.className = `aspect-val bg-${k}`; as.innerText = (aspectTable[t[k]] >= 0 ? "+" : "") + aspectTable[t[k]]; container.appendChild(lb); container.appendChild(di); container.appendChild(as); }); container.appendChild(document.createElement("hr")); ["res", "choc", "lien", "essence"].forEach(k => { const lb = document.createElement("label"); lb.innerText = {"res":"Valeur de Résistance","choc":"Valeur de Choc","lien":"Valeur de Lien","essence":"Valeur d'Essence"}[k]; lb.style.gridColumn = "span 2"; const inP = document.createElement("input"); inP.type = "number"; inP.value = d[k]; inP.onchange = (e) => updateStat(k, parseInt(e.target.value, 10)); container.appendChild(lb); container.appendChild(inP); }); }
     async function updateStat(k, v) { currentStats[selectedChar][k] = v; await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); }
-
     function exportCampaignText() { let d = JSON.parse(JSON.stringify(currentStats)); d.aptitudes = Array.from(document.querySelectorAll('#pane2 input')).map(i => i.value); const dl = document.createElement('a'); dl.setAttribute("href", "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(d))); dl.setAttribute("download", "campagne_vallee_totems.json"); document.body.appendChild(dl); dl.click(); dl.remove(); }
     function importCampaignText(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = async function(e) { try { const i = JSON.parse(e.target.result); if (i.mayak) { currentStats = { ...i }; delete currentStats.aptitudes; if (typeof OBR !== 'undefined') await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } if (i.aptitudes) { const ins = document.querySelectorAll('#pane2 input'); i.aptitudes.forEach((v, idx) => { if (ins[idx]) ins[idx].value = v; }); } renderCharacter(); alert("Campagne rechargée !"); } catch (err) { alert("Erreur : " + err.message); } }; r.readAsText(f); e.target.value = ''; }
   </script>
