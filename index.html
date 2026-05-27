@@ -6,9 +6,9 @@
   <title>Fiches de Personnage - La Vallée des Totems</title>
   <script src="https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk"></script>
   <style>
-    /* VOTRE CSS ORIGINAL CONSERVÉ */
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #e0e0e0; margin: 0; padding: 15px; }
     h2 { margin-top: 0; color: #ffaa00; text-align: center; margin-bottom: 5px; }
+    h3 { color: #ffaa00; font-size: 14px; border-bottom: 1px solid #444; margin-bottom: 10px; }
     .io-panel { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; background: #222; padding: 8px; border-radius: 6px; border: 1px solid #333; }
     .btn-io { background: #444; color: #fff; border: 1px solid #555; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
     .btn-io:hover { background: #555; border-color: #ffaa00; }
@@ -32,8 +32,6 @@
     .color-earth { color: #f39c12 !important; } .bg-earth { background: #7e4a00 !important; border: 1px solid #f39c12; }
     input[type="number"] { width: 60px; padding: 5px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; text-align: center; font-size: 15px; }
     hr { border: 0; border-top: 1px solid #444; margin: 15px 0; grid-column: span 3; }
-
-    /* NOUVEAUX STYLES POUR ONGLETS ET TABLEAUX */
     .tabs-nav { display: flex; margin-bottom: 15px; border: 1px solid #444; }
     .tab-btn { flex: 1; padding: 10px; text-align: center; cursor: pointer; background: #333; color: #ccc; }
     .tab-btn.active { background: #444; color: #ffaa00; font-weight: bold; }
@@ -43,6 +41,7 @@
     th { background: #444; border: 1px solid #555; padding: 4px; color: #ffaa00; }
     td { border: 1px solid #555; padding: 2px; }
     input[type="text"] { width: 100%; background: #222; border: none; color: #fff; padding: 2px; box-sizing: border-box; }
+    select { width: 100%; background: #222; color: #fff; border: 1px solid #555; font-size: 9px; }
   </style>
 </head>
 <body>
@@ -55,8 +54,8 @@
   <div id="pane1" class="tab-pane active">
     <h2>Fiche de Personnage</h2>
     <div class="io-panel">
-      <button class="btn-io" onclick="exportCampaignText()">💾 Sauvegarder Campagne</button>
-      <button class="btn-io" onclick="document.getElementById('fileInput').click()">📂 Charger Fichier</button>
+      <button class="btn-io" onclick="exportCampaignText()">💾 Sauvegarder</button>
+      <button class="btn-io" onclick="document.getElementById('fileInput').click()">📂 Charger</button>
       <input type="file" id="fileInput" accept=".json" onchange="importCampaignText(event)">
     </div>
     <div class="banner-container"><img id="charBanner" src="" alt="Portrait" class="banner-img" /></div>
@@ -71,6 +70,17 @@
       <div class="profil-item">Poids<span id="p-poids">-</span></div>
       <div class="profil-item">Encombrement<span id="p-enc">-</span></div>
     </div>
+    <h3>Protections</h3>
+    <table>
+      <tr><th>Protection</th><th>Forme</th><th>Aspect</th><th>Solidité</th><th>Valeur</th></tr>
+      <tr>
+        <td><select id="protSelect" onchange="updateProtection()"><option value="">Choisir...</option></select></td>
+        <td id="protForme" style="text-align:center">-</td>
+        <td id="protAspect" style="text-align:center">-</td>
+        <td id="protSolidite" style="text-align:center">-</td>
+        <td id="protValeur" style="text-align:center; font-weight:bold">-</td>
+      </tr>
+    </table>
     <div class="grid" id="statsContainer"></div>
   </div>
 
@@ -79,17 +89,14 @@
     <table><tr><th>Assaut</th><th>Test de Réussite</th><th>Portée Int/Ext</th><th>F-Ini</th></tr>
     <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text"></td>'.repeat(4)+'</tr>');</script>
     </table>
-
     <h3>Pouvoirs</h3>
     <table><tr><th>Pouvoir</th><th>Test de Réussite</th><th>Portée</th><th>Cible</th><th>F-Ini</th></tr>
     <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text"></td>'.repeat(5)+'</tr>');</script>
     </table>
-
     <h3>Spécialités</h3>
     <table><tr><th>Spécialité</th><th>Test de Réussite</th><th>Activ.</th><th>Durée</th></tr>
     <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text"></td>'.repeat(4)+'</tr>');</script>
     </table>
-
     <h3>Recettes</h3>
     <table><tr><th>Recette</th><th>Classe/RdS</th><th>Composants</th><th>Enc.</th></tr>
     <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text"></td>'.repeat(4)+'</tr>');</script>
@@ -97,26 +104,21 @@
   </div>
 
   <script>
-    // --- FONCTION ONGLETS ---
-    function showPane(btn, id) {
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(id).classList.add('active');
-      btn.classList.add('active');
-    }
-
-    // --- VOTRE SCRIPT ORIGINAL ---
     const EXTENSION_ID = "com.monextension.fiches_simples";
     const aspectTable = { "D12": 6, "D10": 1, "D8": 0, "D6": -1 };
     const characterTemplates = { mayak: { class: "Chasseresse", image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10" }, bawak: { class: "Guérisseur", image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8" }, cylak: { class: "Sorçière", image: "cylak.png", fire: "D10", water: "D8", air: "D12", earth: "D6" }, borak: { class: "Protecteur", image: "borak.png", fire: "D10", water: "D8", air: "D6", earth: "D12" } };
-    const defaultDynamicStats = { mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0 }, bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0 }, cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0 }, borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0 } };
-    const totemsConfig = { fire: "Totem de Feu", water: "Totem d'Eau", air: "Totem d'Air", earth: "Totem de Terre" };
-    const secondaryConfig = { res: "Valeur de Résistance", choc: "Valeur de Choc", lien: "Valeur de Lien", essence: "Valeur d'Essence" };
-
+    const defaultDynamicStats = { mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0, protection: "" }, bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0, protection: "" }, cylak: { res: 15, choc: 18, lien: 18, essence: 24, age: 0, taille: 0, poids: 0, protection: "" }, borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0, protection: "" } };
+    const protections = { "Robe en Toile de laine": { s: 6, f: "Air", a: "air" }, "Robe en toile Lourde": { s: 7, f: "Air", a: "air" }, "Manteau Lourd": { s: 8, f: "Air", a: "air" }, "Robe d'éclat": { s: 9, f: "Air", a: "air" }, "Cotte d'écorce": { s: 8, f: "Eau", a: "water" }, "Cotte de lianes": { s: 9, f: "Eau", a: "water" }, "Cotte de planches": { s: 10, f: "Eau", a: "water" }, "Armure de l'Arbre": { s: 11, f: "Eau", a: "water" }, "Plastron d'écailles": { s: 10, f: "Feu", a: "fire" }, "Plastron de cuir": { s: 11, f: "Feu", a: "fire" }, "Plastron d'os": { s: 12, f: "Feu", a: "fire" }, "Armure du Serpent": { s: 13, f: "Feu", a: "fire" }, "Armure de mailles": { s: 12, f: "Terre", a: "earth" }, "Armure de lames de Fer": { s: 13, f: "Terre", a: "earth" }, "Armure de Plaques": { s: 14, f: "Terre", a: "earth" }, "Cuirasse du Protecteur": { s: 15, f: "Terre", a: "earth" } };
+    
     let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
     let selectedChar = "mayak";
 
-    document.addEventListener("DOMContentLoaded", () => { document.getElementById("charSelect").value = "mayak"; renderCharacter(); });
+    function showPane(btn, id) { document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(id).classList.add('active'); btn.classList.add('active'); }
+    document.addEventListener("DOMContentLoaded", () => { 
+        const select = document.getElementById('protSelect'); 
+        Object.keys(protections).forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; select.appendChild(o); });
+        document.getElementById("charSelect").value = "mayak"; 
+    });
 
     OBR.onReady(async () => {
       OBR.room.onMetadataChange((metadata) => { if (metadata[EXTENSION_ID]) { mergeMetadata(metadata[EXTENSION_ID]); renderCharacter(); } });
@@ -128,64 +130,26 @@
 
     function mergeMetadata(incoming) { for (const charKey in defaultDynamicStats) { if (!currentStats[charKey]) currentStats[charKey] = {}; for (const statKey in defaultDynamicStats[charKey]) { currentStats[charKey][statKey] = (incoming[charKey] && incoming[charKey][statKey] !== undefined) ? incoming[charKey][statKey] : defaultDynamicStats[charKey][statKey]; } } }
     function changeCharacter() { selectedChar = document.getElementById("charSelect").value; renderCharacter(); }
-    async function verifierEtCalculerPhysique() { const dynamic = currentStats[selectedChar]; const template = characterTemplates[selectedChar]; if (!dynamic.age || dynamic.age === 0) { const deTerre = parseInt(template.earth.replace("D", ""), 10); const deEau = parseInt(template.water.replace("D", ""), 10); const deFeu = parseInt(template.fire.replace("D", ""), 10); dynamic.age = 21 + aspectTable[template.water] + aspectTable[template.earth]; dynamic.poids = 30 + (2 * deTerre) + deEau + 20; dynamic.taille = 80 + (4 * deTerre) + (4 * deFeu) + 15; try { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } catch(e) {} } }
-    async function renderCharacter() { await verifierEtCalculerPhysique(); const template = characterTemplates[selectedChar]; const dynamic = currentStats[selectedChar]; document.getElementById("charBanner").src = template.image; document.getElementById("characterClass").innerText = template.class; const enc = Math.floor((dynamic.poids + dynamic.taille) / 20); document.getElementById("p-age").innerText = `${dynamic.age} ans`; document.getElementById("p-taille").innerText = `${dynamic.taille} cm`; document.getElementById("p-poids").innerText = `${dynamic.poids} kg`; document.getElementById("p-enc").innerText = `${enc} Uté`; const container = document.getElementById("statsContainer"); container.innerHTML = ""; const hL = document.createElement("div"); hL.className = "grid-header left"; hL.innerText = "Totem"; container.appendChild(hL); const hD = document.createElement("div"); hD.className = "grid-header"; hD.innerText = "Dé"; container.appendChild(hD); const hA = document.createElement("div"); hA.className = "grid-header"; hA.innerText = "Aspect"; container.appendChild(hA); for (const [k, l] of Object.entries(totemsConfig)) { const lb = document.createElement("label"); lb.innerText = l; const di = document.createElement("div"); di.className = `dice-val color-${k}`; di.innerText = template[k]; const as = document.createElement("div"); as.className = `aspect-val bg-${k}`; as.innerText = (aspectTable[template[k]] >= 0 ? "+" : "") + aspectTable[template[k]]; container.appendChild(lb); container.appendChild(di); container.appendChild(as); } container.appendChild(document.createElement("hr")); const initL = document.createElement("label"); initL.innerText = "Initiative"; const initV = document.createElement("div"); initV.style.gridColumn = "span 2"; initV.style.textAlign = "right"; initV.innerText = `1d12 + (${aspectTable[template.fire] >= 0 ? '+' : ''}${aspectTable[template.fire]})`; container.appendChild(initL); container.appendChild(initV); const movL = document.createElement("label"); movL.innerText = "Mouvement"; const movV = document.createElement("div"); movV.className = "dice-val"; movV.style.gridColumn = "span 2"; movV.innerText = `${Math.floor(parseInt(template.fire.replace("D",""),10)/2)} cases`; container.appendChild(movL); container.appendChild(movV); const manL = document.createElement("label"); manL.innerText = "Manœuvre"; const manV = document.createElement("div"); manV.className = "dice-val"; manV.style.gridColumn = "span 2"; manV.innerText = "4 Pts"; container.appendChild(manL); container.appendChild(manV); container.appendChild(document.createElement("hr")); for (const [k, l] of Object.entries(secondaryConfig)) { const lb = document.createElement("label"); lb.innerText = l; lb.style.gridColumn = "span 2"; const inP = document.createElement("input"); inP.type = "number"; inP.value = dynamic[k]; inP.onchange = (e) => updateStat(k, parseInt(e.target.value, 10)); container.appendChild(lb); container.appendChild(inP); } }
+    
+    function updateProtection() {
+        const sel = document.getElementById('protSelect');
+        const p = protections[sel.value];
+        if (!p) { document.getElementById('protForme').innerText = "-"; return; }
+        const t = characterTemplates[selectedChar];
+        const valA = aspectTable[t[p.a]];
+        document.getElementById('protForme').innerText = p.f;
+        document.getElementById('protAspect').innerText = (valA >= 0 ? "+" : "") + valA;
+        document.getElementById('protSolidite').innerText = p.s;
+        document.getElementById('protValeur').innerText = p.s + valA;
+        updateStat('protection', sel.value);
+    }
+
+    async function verifierEtCalculerPhysique() { const d = currentStats[selectedChar]; const t = characterTemplates[selectedChar]; if (!d.age || d.age === 0) { d.age = 21 + aspectTable[t.water] + aspectTable[t.earth]; d.poids = 30 + (2 * parseInt(t.earth.replace("D",""),10)) + parseInt(t.water.replace("D",""),10) + 20; d.taille = 80 + (4 * parseInt(t.earth.replace("D",""),10)) + (4 * parseInt(t.fire.replace("D",""),10)) + 15; try { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } catch(e) {} } }
+    async function renderCharacter() { await verifierEtCalculerPhysique(); const t = characterTemplates[selectedChar]; const d = currentStats[selectedChar]; document.getElementById("charBanner").src = t.image; document.getElementById("characterClass").innerText = t.class; document.getElementById("p-age").innerText = `${d.age} ans`; document.getElementById("p-taille").innerText = `${d.taille} cm`; document.getElementById("p-poids").innerText = `${d.poids} kg`; document.getElementById("p-enc").innerText = `${Math.floor((d.poids + d.taille) / 20)} Uté`; document.getElementById('protSelect').value = d.protection || ""; updateProtection(); const container = document.getElementById("statsContainer"); container.innerHTML = ""; ["Totem", "Dé", "Aspect"].forEach(h => { const div = document.createElement("div"); div.className = "grid-header"; if(h=="Totem") div.classList.add("left"); div.innerText = h; container.appendChild(div); }); ["fire", "water", "air", "earth"].forEach(k => { const lb = document.createElement("label"); lb.innerText = {"fire":"Totem de Feu","water":"Totem d'Eau","air":"Totem d'Air","earth":"Totem de Terre"}[k]; const di = document.createElement("div"); di.className = `dice-val color-${k}`; di.innerText = t[k]; const as = document.createElement("div"); as.className = `aspect-val bg-${k}`; as.innerText = (aspectTable[t[k]] >= 0 ? "+" : "") + aspectTable[t[k]]; container.appendChild(lb); container.appendChild(di); container.appendChild(as); }); container.appendChild(document.createElement("hr")); ["res", "choc", "lien", "essence"].forEach(k => { const lb = document.createElement("label"); lb.innerText = {"res":"Valeur de Résistance","choc":"Valeur de Choc","lien":"Valeur de Lien","essence":"Valeur d'Essence"}[k]; lb.style.gridColumn = "span 2"; const inP = document.createElement("input"); inP.type = "number"; inP.value = d[k]; inP.onchange = (e) => updateStat(k, parseInt(e.target.value, 10)); container.appendChild(lb); container.appendChild(inP); }); }
     async function updateStat(k, v) { currentStats[selectedChar][k] = v; await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); }
-    
-function exportCampaignText() {
-        let dataToSave = JSON.parse(JSON.stringify(currentStats));
-        // Capture le texte de tous les inputs présents dans le pane2 (vos 4 tableaux)
-        dataToSave.aptitudes = Array.from(document.querySelectorAll('#pane2 input')).map(i => i.value);
 
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToSave));
-        const dl = document.createElement('a');
-        dl.setAttribute("href", dataStr);
-        dl.setAttribute("download", "campagne_vallee_totems.json");
-        document.body.appendChild(dl);
-        dl.click();
-        dl.remove();
-    }
-
-    function importCampaignText(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                const importedData = JSON.parse(e.target.result);
-                
-                // 1. Restaure les Stats
-if (importedData.mayak) {
-    // On copie toutes les données importées
-    currentStats = { ...importedData };
-    
-    // On retire le bloc 'aptitudes' pour ne garder que les stats pures
-    // car 'aptitudes' est géré séparément dans la partie 2
-    delete currentStats.aptitudes; 
-    
-    if (typeof OBR !== 'undefined' && OBR.room) {
-        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
-    }
-}
-                
-                // 2. Restaure le texte des tableaux
-                if (importedData.aptitudes) {
-                    const inputs = document.querySelectorAll('#pane2 input');
-                    importedData.aptitudes.forEach((val, index) => {
-                        if (inputs[index]) inputs[index].value = val;
-                    });
-                }
-                
-                renderCharacter();
-                alert("Campagne rechargée !");
-            } catch (err) {
-                alert("Erreur lors du chargement : " + err.message);
-            }
-        };
-        reader.readAsText(file);
-        event.target.value = ''; // Réinitialise l'input file pour permettre de recharger le même fichier
-    }
+    function exportCampaignText() { let d = JSON.parse(JSON.stringify(currentStats)); d.aptitudes = Array.from(document.querySelectorAll('#pane2 input')).map(i => i.value); const dl = document.createElement('a'); dl.setAttribute("href", "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(d))); dl.setAttribute("download", "campagne_vallee_totems.json"); document.body.appendChild(dl); dl.click(); dl.remove(); }
+    function importCampaignText(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = async function(e) { try { const i = JSON.parse(e.target.result); if (i.mayak) { currentStats = { ...i }; delete currentStats.aptitudes; if (typeof OBR !== 'undefined') await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } if (i.aptitudes) { const ins = document.querySelectorAll('#pane2 input'); i.aptitudes.forEach((v, idx) => { if (ins[idx]) ins[idx].value = v; }); } renderCharacter(); alert("Campagne rechargée !"); } catch (err) { alert("Erreur : " + err.message); } }; r.readAsText(f); e.target.value = ''; }
   </script>
 </body>
 </html>
