@@ -40,9 +40,11 @@
     th { background: #444; border: 1px solid #555; padding: 4px; color: #ffaa00; }
     td { border: 1px solid #555; padding: 2px; }
     input[type="text"] { width: 100%; background: #222; border: none; color: #fff; padding: 2px; box-sizing: border-box; }
+    select { width: 100%; background: #222; color: #fff; border: 1px solid #555; font-size: 9px; }
   </style>
 </head>
 <body>
+
   <div class="tabs-nav">
     <div class="tab-btn active" onclick="showPane(this, 'pane1')">Stats</div>
     <div class="tab-btn" onclick="showPane(this, 'pane2')">Aptitudes</div>
@@ -67,25 +69,35 @@
       <div class="profil-item">Poids<span id="p-poids">-</span></div>
       <div class="profil-item">Encombrement<span id="p-enc">-</span></div>
     </div>
+
+    <h3>Protection</h3>
+    <table>
+      <tr><th>Type</th><th>Solidité</th></tr>
+      <tr>
+        <td><select id="protSelect" onchange="updateProtection()"><option value="Aucune">Aucune</option><option value="Cuir">Cuir (S:4)</option><option value="Mailles">Mailles (S:6)</option><option value="Plaques">Plaques (S:8)</option></select></td>
+        <td id="protVal" style="text-align:center">-</td>
+      </tr>
+    </table>
+
     <div class="grid" id="statsContainer"></div>
   </div>
 
   <div id="pane2" class="tab-pane">
     <h3>Assauts</h3>
     <table><tr><th>Assaut</th><th>Test de Réussite</th><th>Portée Int/Ext</th><th>F-Ini</th></tr>
-    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
+    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
     </table>
     <h3>Pouvoirs</h3>
     <table><tr><th>Pouvoir</th><th>Test de Réussite</th><th>Portée</th><th>Cible</th><th>F-Ini</th></tr>
-    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt" oninput="saveAptitudes()"></td>'.repeat(5)+'</tr>');</script>
+    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" oninput="saveAptitudes()"></td>'.repeat(5)+'</tr>');</script>
     </table>
     <h3>Spécialités</h3>
     <table><tr><th>Spécialité</th><th>Test de Réussite</th><th>Activ.</th><th>Durée</th></tr>
-    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
+    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
     </table>
     <h3>Recettes</h3>
     <table><tr><th>Recette</th><th>Classe/RdS</th><th>Composants</th><th>Enc.</th></tr>
-    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" class="apt" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
+    <script>for(let i=0; i<10; i++) document.write('<tr>'+'<td><input type="text" oninput="saveAptitudes()"></td>'.repeat(4)+'</tr>');</script>
     </table>
   </div>
 
@@ -101,6 +113,7 @@
     const aspectTable = { "D12": 6, "D10": 1, "D8": 0, "D6": -1 };
     const characterTemplates = { mayak: { class: "Chasseresse", image: "mayak.png", fire: "D12", water: "D6", air: "D8", earth: "D10" }, bawak: { class: "Guérisseur", image: "bawak.png", fire: "D6", water: "D12", air: "D10", earth: "D8" }, cylak: { class: "Sorçière", image: "cylak.png", fire: "D10", water: "D8", air: "D12", earth: "D6" }, borak: { class: "Protecteur", image: "borak.png", fire: "D10", water: "D8", air: "D6", earth: "D12" } };
     
+    // Ajout de apts: Array(140).fill("") pour chaque personnage
     const defaultDynamicStats = { 
         mayak: { res: 22, choc: 16, lien: 14, essence: 18, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") }, 
         bawak: { res: 18, choc: 20, lien: 21, essence: 18, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") }, 
@@ -108,28 +121,51 @@
         borak: { res: 24, choc: 20, lien: 15, essence: 14, age: 0, taille: 0, poids: 0, apts: Array(140).fill("") } 
     };
     
-    let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
-    let selectedChar = "mayak";
     const totemsConfig = { fire: "Totem de Feu", water: "Totem d'Eau", air: "Totem d'Air", earth: "Totem de Terre" };
     const secondaryConfig = { res: "Valeur de Résistance", choc: "Valeur de Choc", lien: "Valeur de Lien", essence: "Valeur d'Essence" };
 
-    document.addEventListener("DOMContentLoaded", () => { renderCharacter(); });
-
-    OBR.onReady(async () => {
-      OBR.room.onMetadataChange((metadata) => { if (metadata[EXTENSION_ID]) { currentStats = metadata[EXTENSION_ID]; renderCharacter(); } });
-      const metadata = await OBR.room.getMetadata();
-      if (metadata[EXTENSION_ID]) { currentStats = metadata[EXTENSION_ID]; renderCharacter(); }
-      else { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); renderCharacter(); }
-    });
-
-    function changeCharacter() { selectedChar = document.getElementById("charSelect").value; renderCharacter(); }
+    let currentStats = JSON.parse(JSON.stringify(defaultDynamicStats));
+    let selectedChar = "mayak";
 
     async function saveAptitudes() {
-        const inputs = document.querySelectorAll('.apt');
+        const inputs = document.querySelectorAll('#pane2 input');
         currentStats[selectedChar].apts = Array.from(inputs).map(i => i.value);
-        await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+        try { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } catch(e) {}
     }
 
+    function loadAptitudes() {
+        const inputs = document.querySelectorAll('#pane2 input');
+        const apts = currentStats[selectedChar].apts || [];
+        inputs.forEach((input, index) => { input.value = apts[index] || ""; });
+    }
+
+    function updateProtection() {
+        const val = document.getElementById('protSelect').value;
+        const lookup = { "Aucune": "-", "Cuir": "4", "Mailles": "6", "Plaques": "8" };
+        document.getElementById('protVal').innerText = lookup[val];
+    }
+
+    document.addEventListener("DOMContentLoaded", () => { document.getElementById("charSelect").value = "mayak"; renderCharacter(); });
+
+    OBR.onReady(async () => {
+      OBR.room.onMetadataChange((metadata) => { if (metadata[EXTENSION_ID]) { mergeMetadata(metadata[EXTENSION_ID]); renderCharacter(); } });
+      const metadata = await OBR.room.getMetadata();
+      if (metadata[EXTENSION_ID]) mergeMetadata(metadata[EXTENSION_ID]);
+      else await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats });
+      renderCharacter();
+    });
+
+    function mergeMetadata(incoming) { 
+        for (const charKey in defaultDynamicStats) { 
+            if (!currentStats[charKey]) currentStats[charKey] = { ...defaultDynamicStats[charKey] }; 
+            for (const statKey in defaultDynamicStats[charKey]) { 
+                currentStats[charKey][statKey] = (incoming[charKey] && incoming[charKey][statKey] !== undefined) ? incoming[charKey][statKey] : defaultDynamicStats[charKey][statKey]; 
+            } 
+        } 
+    }
+
+    function changeCharacter() { selectedChar = document.getElementById("charSelect").value; renderCharacter(); }
+    
     async function verifierEtCalculerPhysique() { 
         const dynamic = currentStats[selectedChar]; 
         const template = characterTemplates[selectedChar]; 
@@ -140,6 +176,7 @@
             dynamic.age = 21 + aspectTable[template.water] + aspectTable[template.earth]; 
             dynamic.poids = 30 + (2 * deTerre) + deEau + 20; 
             dynamic.taille = 80 + (4 * deTerre) + (4 * deFeu) + 15; 
+            try { await OBR.room.setMetadata({ [EXTENSION_ID]: currentStats }); } catch(e) {} 
         } 
     }
 
@@ -149,14 +186,13 @@
         const dynamic = currentStats[selectedChar]; 
         document.getElementById("charBanner").src = template.image; 
         document.getElementById("characterClass").innerText = template.class; 
+        const enc = Math.floor((dynamic.poids + dynamic.taille) / 20); 
         document.getElementById("p-age").innerText = `${dynamic.age} ans`; 
         document.getElementById("p-taille").innerText = `${dynamic.taille} cm`; 
         document.getElementById("p-poids").innerText = `${dynamic.poids} kg`; 
-        document.getElementById("p-enc").innerText = `${Math.floor((dynamic.poids + dynamic.taille) / 20)} Uté`; 
+        document.getElementById("p-enc").innerText = `${enc} Uté`; 
         
-        const inputs = document.querySelectorAll('.apt');
-        if(dynamic.apts) dynamic.apts.forEach((val, i) => { if(inputs[i]) inputs[i].value = val; });
-        else inputs.forEach(i => i.value = "");
+        loadAptitudes(); // Chargement des aptitudes du perso
 
         const container = document.getElementById("statsContainer"); 
         container.innerHTML = ""; 
@@ -169,22 +205,7 @@
             const as = document.createElement("div"); as.className = `aspect-val bg-${k}`; as.innerText = (aspectTable[template[k]] >= 0 ? "+" : "") + aspectTable[template[k]]; 
             container.appendChild(lb); container.appendChild(di); container.appendChild(as); 
         } 
-        
         container.appendChild(document.createElement("hr")); 
-        
-        // Bloc Protections
-        const initL = document.createElement("label"); initL.innerText = "Initiative"; 
-        const initV = document.createElement("div"); initV.style.gridColumn = "span 2"; initV.style.textAlign = "right"; initV.innerText = `1d12 + (${aspectTable[template.fire] >= 0 ? '+' : ''}${aspectTable[template.fire]})`; 
-        container.appendChild(initL); container.appendChild(initV); 
-        const movL = document.createElement("label"); movL.innerText = "Mouvement"; 
-        const movV = document.createElement("div"); movV.className = "dice-val"; movV.style.gridColumn = "span 2"; movV.innerText = `${Math.floor(parseInt(template.fire.replace("D",""),10)/2)} cases`; 
-        container.appendChild(movL); container.appendChild(movV); 
-        const manL = document.createElement("label"); manL.innerText = "Manœuvre"; 
-        const manV = document.createElement("div"); manV.className = "dice-val"; manV.style.gridColumn = "span 2"; manV.innerText = "4 Pts"; 
-        container.appendChild(manL); container.appendChild(manV); 
-        
-        container.appendChild(document.createElement("hr")); 
-        
         for (const [k, l] of Object.entries(secondaryConfig)) { 
             const lb = document.createElement("label"); lb.innerText = l; lb.style.gridColumn = "span 2"; 
             const inP = document.createElement("input"); inP.type = "number"; inP.value = dynamic[k]; inP.onchange = (e) => updateStat(k, parseInt(e.target.value, 10)); 
