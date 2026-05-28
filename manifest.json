@@ -10,7 +10,7 @@
     "title": "Feuille d'Aventure",
     "icon": "https://raw.githubusercontent.com/dungeonsfactory/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/main/df_logo.png",
     "popover": "https://dungeonsfactory.github.io/La-Vallee-des-Totems-Character-sheet-for-Owlbear-Rodeo/index.html",
-    "height": 500,
-    "width": 700
+    "height": 450,
+    "width": 800
   }
 }
